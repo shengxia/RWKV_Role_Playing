@@ -1,4 +1,5 @@
 pip install torch --extra-index-url https://download.pytorch.org/whl/cu117 --upgrade
+
 pip install -r requirements.txt
 
 python webui.py --model model/path
