@@ -6,12 +6,13 @@ from modules.model import regen_msg
 from modules.model import load_init_prompt
 
 def save_config(top_p=0.7, temperature=0.95, presence_penalty=0.2, frequency_penalty=0.2):
-  with open('config.json', 'w') as f:
+  with open('config.json', 'w', encoding='utf8') as f:
     json.dump({'top_p': top_p, 'temperature': temperature, 'presence': presence_penalty, 'frequency': frequency_penalty}, f, indent=2)
 
 def save_char(user='', bot='', bot_persona='', scenario='', example_dialogue=''):
-  with open('char.json', 'w') as f:
-    json.dump({'user': user, 'bot': bot, 'bot_persona': bot_persona, 'scenario': scenario, 'example_dialogue': example_dialogue}, f, indent=2)
+  with open('char.json', 'w', encoding='utf8') as f:
+    json.dump({'user': user, 'bot': bot, 'bot_persona': bot_persona, 'scenario': scenario, 'example_dialogue': example_dialogue}, f, indent=2, ensure_ascii=False)
+  return load_init_prompt(user, bot, bot_persona, scenario, example_dialogue)
 
 def create_ui():
   with gr.Blocks() as demo:
@@ -52,7 +53,7 @@ def create_ui():
     example_dialogue = gr.TextArea(placeholder='示例对话', value=char['example_dialogue'], label='示例对话')
     save_char_btn = gr.Button('保存并载入角色')
 
-    load_init_prompt(user, bot, bot_persona, scenario, example_dialogue)
+    load_init_prompt(user.value, bot.value, bot_persona.value, scenario.value, example_dialogue.value)
 
     input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
     output_list = [message, chatbot]
@@ -63,5 +64,5 @@ def create_ui():
     submit.click(on_message, inputs=input_list, outputs=output_list)
     regen.click(regen_msg, inputs=input_list[1:6], outputs=output_list)
     delete.click(reset_bot, inputs=None, outputs=output_list)
-    save_char_btn.click(load_init_prompt, inputs=char_input_list, outputs=char_input_list)
+    save_char_btn.click(save_char, inputs=char_input_list, outputs=char_input_list)
   return demo

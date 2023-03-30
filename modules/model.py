@@ -23,21 +23,23 @@ log_name = None
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
 
+gc.collect()
+torch.cuda.empty_cache()
+
 def load_init_prompt(user, bot, bot_persona, scenario, example_dialogue):
   global log_name
   log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
-  init_prompt = f"{bot.value}的性格：{bot_persona.value}\n"
-  init_prompt += f"剧情简介：{scenario.value}\n"
-  init_prompt += f"以下是一段{user.value}和{bot.value}的示例对话：\n{example_dialogue.value}".replace('{{user}}', user.value).replace('{{bot}}', bot.value)
+  init_prompt = f"{bot}的性格：{bot_persona}\n"
+  init_prompt += f"剧情简介：{scenario}\n"
+  init_prompt += f"以下是一段{user}和{bot}的示例对话：\n{example_dialogue}".replace('{{user}}', user).replace('{{bot}}', bot)
   init_prompt = init_prompt.strip().split('\n')
   for c in range(len(init_prompt)):
     init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
   init_prompt = '\n' + ('\n'.join(init_prompt)).strip() + '\n\n'
   out = run_rnn(pipeline.encode(init_prompt))
   save_all_stat('', 'chat_init', out)
-  gc.collect()
-  torch.cuda.empty_cache()
   save_all_stat(srv, 'chat', out)
+  return user, bot, bot_persona, scenario, example_dialogue
 
 def reset_bot():
   global log_name
