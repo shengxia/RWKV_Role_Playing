@@ -9,10 +9,10 @@ def save_config(top_p=0.7, temperature=0.95, presence_penalty=0.2, frequency_pen
   with open('config.json', 'w', encoding='utf8') as f:
     json.dump({'top_p': top_p, 'temperature': temperature, 'presence': presence_penalty, 'frequency': frequency_penalty}, f, indent=2)
 
-def save_char(user='', bot='', bot_persona='', scenario='', example_dialogue=''):
+def save_char(user='', bot='', greeting='', bot_persona='', scenario='', example_dialogue=''):
   with open('char.json', 'w', encoding='utf8') as f:
-    json.dump({'user': user, 'bot': bot, 'bot_persona': bot_persona, 'scenario': scenario, 'example_dialogue': example_dialogue}, f, indent=2, ensure_ascii=False)
-  return load_init_prompt(user, bot, bot_persona, scenario, example_dialogue)
+    json.dump({'user': user, 'bot': bot, 'greeting': greeting, 'bot_persona': bot_persona, 'scenario': scenario, 'example_dialogue': example_dialogue}, f, indent=2, ensure_ascii=False)
+  return load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogue)
 
 def create_ui():
   with gr.Blocks() as demo:
@@ -41,23 +41,26 @@ def create_ui():
     message = gr.Textbox(placeholder='说些什么吧', show_label=False)
 
     with gr.Row():
-        submit = gr.Button('提交')
-        regen = gr.Button('重新生成')
+      submit = gr.Button('提交')
+      regen = gr.Button('重新生成')
 
     delete = gr.Button('清空聊天')
 
     user = gr.Textbox(placeholder='AI怎么称呼你', value=char['user'], label='你的名字')
     bot = gr.Textbox(placeholder='角色名字', value=char['bot'], label='角色的名字')
+    greeting = gr.Textbox(placeholder='开场白', value=char['greeting'], label='开场白')
     bot_persona = gr.TextArea(placeholder='角色性格', value=char['bot_persona'], label='角色的性格')
     scenario = gr.TextArea(placeholder='剧情脚本', value=char['scenario'], label='要展开什么剧情')
     example_dialogue = gr.TextArea(placeholder='示例对话', value=char['example_dialogue'], label='示例对话')
     save_char_btn = gr.Button('保存并载入角色')
 
-    load_init_prompt(user.value, bot.value, bot_persona.value, scenario.value, example_dialogue.value)
+    chatbot.value += [[None, greeting.value]]
+
+    load_init_prompt(user.value, bot.value, greeting.value, bot_persona.value, scenario.value, example_dialogue.value, [])
 
     input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
     output_list = [message, chatbot]
-    char_input_list = [user, bot, bot_persona, scenario, example_dialogue]
+    char_input_list = [user, bot, greeting, bot_persona, scenario, example_dialogue]
 
     save_conf.click(save_config, inputs=input_list[2:6])
     message.submit(on_message, inputs=input_list, outputs=output_list)
