@@ -31,8 +31,8 @@ def load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogu
   log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
   init_prompt = f"{bot}的性格：{bot_persona}\n"
   init_prompt += f"剧情简介：{scenario}\n"
-  example_dialogue += "{{bot}}： " + greeting + "\n\n"
-  init_prompt += f"以下是一段{user}和{bot}的示例对话：\n{example_dialogue}".replace('{{user}}', user).replace('{{bot}}', bot)
+  example_dialogue_merge = example_dialogue + "{{bot}}： " + greeting + "\n\n"
+  init_prompt += f"以下是一段{user}和{bot}的示例对话：\n{example_dialogue_merge}".replace('{{user}}', user).replace('{{bot}}', bot)
   init_prompt = init_prompt.strip().split('\n')
   for c in range(len(init_prompt)):
     init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
