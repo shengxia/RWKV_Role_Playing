@@ -40,16 +40,16 @@ def load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogu
   out = run_rnn(pipeline.encode(init_prompt))
   save_all_stat('', 'chat_init', out)
   save_all_stat(srv, 'chat', out)
-  chatbot = chatbot + [[None, greeting]]
+  chatbot = [[None, greeting]]
   return user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot
 
-def reset_bot():
+def reset_bot(greeting):
   global log_name
   log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
   out = load_all_stat('', 'chat_init')
   save_all_stat(srv, 'chat', out)
   print("Chat reset.")
-  return None, None
+  return None, [[None, greeting]]
 
 def load_model():
   global model, pipeline, AVOID_REPEAT_TOKENS

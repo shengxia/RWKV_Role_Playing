@@ -10,4 +10,8 @@ from modules.ui import create_ui
 
 if __name__ == "__main__":
   load_model()
-  create_ui().launch(server_name="0.0.0.0" if cmd_opts.listen else None, server_port=cmd_opts.port)
+  ui = create_ui()
+  ui.queue(concurrency_count=5, max_size=64).launch(
+    server_name="0.0.0.0" if cmd_opts.listen else None, 
+    server_port=cmd_opts.port
+  )
