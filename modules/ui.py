@@ -55,7 +55,7 @@ def create_ui():
     bot = gr.Textbox(placeholder='角色名字', label='角色的名字')
     greeting = gr.Textbox(placeholder='开场白', label='开场白')
     bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格')
-    scenario = gr.TextArea(placeholder='剧情脚本', label='要展开什么剧情')
+    scenario = gr.TextArea(placeholder='背景故事', label='对话发生在什么背景下')
     example_dialogue = gr.TextArea(placeholder='示例对话', label='示例对话')
     save_char_btn = gr.Button('保存并载入角色')
 

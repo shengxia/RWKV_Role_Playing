@@ -32,7 +32,7 @@ def load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogu
   model_tokens = []
   model_state = None
   init_prompt = f"接下来，你要扮演一个名为{bot}的角色与{user}对话，以下是{bot}的性格：\n{bot_persona}\n"
-  init_prompt += f"你需要参考以下剧情来展开对话：\n{scenario}\n"
+  init_prompt += f"你需要参考以下背景故事来展开对话：\n{scenario}\n"
   example_dialogue_merge = example_dialogue + "{{bot}}： " + greeting + "\n\n"
   init_prompt += f"以下是一段{user}和{bot}的示例对话：\n{example_dialogue_merge}".replace('{{user}}', user).replace('{{bot}}', bot)
   init_prompt = init_prompt.strip().split('\n')
