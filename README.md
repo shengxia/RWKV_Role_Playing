@@ -30,7 +30,7 @@ python webui.py --listen --model model/fp16i8_RWKV-4-Pile-7B-EngChn-test5-202303
 
 ### 1. 能让AI生成文字的速度再快一点吗？
 
-当然可以，你可以把如果运行不起来，把webui.py里面的os.environ["RWKV_CUDA_ON"] = '0'改成os.environ["RWKV_CUDA_ON"] = '1',但是你的机器必须安装Visual C++生成工具，以及Nvidia的CUDA，CUDA比较好解决，去官网下载就行了建议安装11.7版本，这个Visual C++生成工具可以参考[这个链接](https://learn.microsoft.com/zh-cn/training/modules/rust-set-up-environment/3-install-build-tools)装好之后还需要配置一下环境变量，如下图：
+当然可以，把webui.py里面的os.environ["RWKV_CUDA_ON"] = '0'改成os.environ["RWKV_CUDA_ON"] = '1'，但是你的机器必须安装Visual C++生成工具，以及Nvidia的CUDA，CUDA比较好解决（可能还得装CUDNN，我没验证到底要不要，反正我是都装了），去官网下载就行了，建议安装11.7版本，这个Visual C++生成工具可以参考[这个链接](https://learn.microsoft.com/zh-cn/training/modules/rust-set-up-environment/3-install-build-tools)装好之后还需要配置一下环境变量，如下图：
 ![图片3](./pic/3.png)
 我这里配置的值是C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Tools\MSVC\14.16.27023\bin\Hostx64\x64，你们根据实际情况进行配置，主要是找到cl.exe这个文件所在的文件夹，当然也要注意架构，不过一般来说，大家都是64位的系统了吧。这样就算是完成了，然后在运行脚本，你会发现文字的生成速度提高了很多。
 
