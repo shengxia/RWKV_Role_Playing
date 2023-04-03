@@ -1,6 +1,6 @@
 import os
 os.environ["RWKV_JIT_ON"] = '1'
-os.environ["RWKV_CUDA_ON"] = '1'
+os.environ["RWKV_CUDA_ON"] = '0'
 import numpy as np
 np.set_printoptions(precision=4, suppress=True, linewidth=200)
 
