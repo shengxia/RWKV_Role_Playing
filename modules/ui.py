@@ -4,6 +4,7 @@ from modules.model import on_message
 from modules.model import reset_bot
 from modules.model import regen_msg
 from modules.model import load_init_prompt
+from modules.model import get_prompt
 
 def get_all_chars():
   files=os.listdir('./chars')
@@ -63,15 +64,15 @@ def create_ui():
           refresh_char_btn = gr.Button("刷新角色列表")
           load_char_btn = gr.Button("载入角色")
         with gr.Column(scale=7):
-          chatbot = gr.Chatbot(show_label=False).style(height=400)
+          chatbot = gr.Chatbot(show_label=False).style(height=380)
           message = gr.Textbox(placeholder='说些什么吧', show_label=False)
-
           with gr.Row():
             submit = gr.Button('提交')
-            regen = gr.Button('重新生成')
+            get_prompt_btn = gr.Button('提词')
           with gr.Row():
+            regen = gr.Button('重新生成')
             clear_last_btn = gr.Button('清除上一条')
-            delete = gr.Button('清空聊天')
+          delete = gr.Button('清空聊天')
     
     with gr.Tab("角色"):
       with gr.Row():
@@ -103,4 +104,5 @@ def create_ui():
     delete.click(reset_bot, inputs=[greeting], outputs=output_list)
     save_char_btn.click(save_char, inputs=char_input_list, outputs=char_input_list)
     clear_last_btn.click(clear_last, inputs=[chatbot], outputs=[chatbot, message])
+    get_prompt_btn.click(get_prompt, inputs=input_list[2:7], outputs=[message])
   return app

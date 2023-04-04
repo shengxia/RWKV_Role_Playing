@@ -104,11 +104,23 @@ def on_message(message, chatbot, top_p, temperature, presence_penalty, frequency
   chatbot = chatbot + [[msg, None]]
   return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty) 
 
+def get_prompt(top_p, temperature, presence_penalty, frequency_penalty, user):
+  out = load_all_stat(srv, 'chat')
+  new = f"{user}： "
+  out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
+  new_prompt = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
+  return new_prompt.replace('\n\n', '')
+
 def gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty):
+  new_reply = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
+  save_all_stat(srv, 'chat', out)
+  chatbot[-1][1] = new_reply.replace('\n', '')
+  save_log(chatbot)
+  return '', chatbot
+
+def get_reply(out, x_temp, x_top_p, presence_penalty, frequency_penalty):
   global model_tokens, model_state
   new_reply = ''
-  x_temp = temperature
-  x_top_p = top_p
   begin = len(model_tokens)
   out_last = begin
   occurrence = {}
@@ -141,10 +153,7 @@ def gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalt
     if '\n\n' in send_msg:
       send_msg = send_msg.strip()
       break
-  save_all_stat(srv, 'chat', out)
-  chatbot[-1][1] = new_reply.replace('\n', '')
-  save_log(chatbot)
-  return '', chatbot
+  return new_reply
 
 def save_log(chatbot):
   global log_name
