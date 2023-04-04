@@ -1,11 +1,11 @@
 import os
-os.environ["RWKV_JIT_ON"] = '1'
-os.environ["RWKV_CUDA_ON"] = '0'
+from modules.options import cmd_opts
+os.environ["RWKV_JIT_ON"] = cmd_opts.jit_on
+os.environ["RWKV_CUDA_ON"] = cmd_opts.cuda_on
 import numpy as np
 np.set_printoptions(precision=4, suppress=True, linewidth=200)
 
 from modules.model import load_model
-from modules.options import cmd_opts
 from modules.ui import create_ui
 
 if __name__ == "__main__":

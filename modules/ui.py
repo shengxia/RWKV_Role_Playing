@@ -56,26 +56,33 @@ def create_ui():
     with gr.Tab("聊天"):
       with gr.Row():
         with gr.Column(scale=3):
+          chatbot = gr.Chatbot(show_label=False).style(height=380)
+          message = gr.Textbox(placeholder='说些什么吧', show_label=False)
+          with gr.Row():
+            with gr.Column(min_width=100):
+              submit = gr.Button('提交')
+            with gr.Column(min_width=100):
+              get_prompt_btn = gr.Button('提词')
+          with gr.Row():
+            with gr.Column(min_width=100):
+              regen = gr.Button('重新生成')
+            with gr.Column(min_width=100):
+              clear_last_btn = gr.Button('清除上一条')
+          delete = gr.Button('清空聊天')
+        with gr.Column(scale=1):
+          with gr.Row():
+            char_dropdown = gr.Dropdown(None, interactive=True, label="请选择角色")
+          with gr.Row():
+            with gr.Column(min_width=100):
+              refresh_char_btn = gr.Button("刷新角色列表")
+            with gr.Column(min_width=100):
+              load_char_btn = gr.Button("载入角色")
           top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
           temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
           presence_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Presence Penalty')
           frequency_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
           save_conf = gr.Button('保存设置')
-          with gr.Row():
-            char_dropdown = gr.Dropdown(None, interactive=True, label="请选择角色")
-          refresh_char_btn = gr.Button("刷新角色列表")
-          load_char_btn = gr.Button("载入角色")
-        with gr.Column(scale=7):
-          chatbot = gr.Chatbot(show_label=False).style(height=380)
-          message = gr.Textbox(placeholder='说些什么吧', show_label=False)
-          with gr.Row():
-            submit = gr.Button('提交')
-            get_prompt_btn = gr.Button('提词')
-          with gr.Row():
-            regen = gr.Button('重新生成')
-            clear_last_btn = gr.Button('清除上一条')
-          delete = gr.Button('清空聊天')
-    
+
     with gr.Tab("角色"):
       with gr.Row():
         with gr.Column():
