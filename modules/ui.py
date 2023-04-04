@@ -37,6 +37,14 @@ def load_config(file_name):
   chatbot = [[None, char['greeting']]]
   return configs['top_p'], configs['temperature'], configs['presence'], configs['frequency'], char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'], chatbot
 
+def clear_last(chatbot):
+  message = chatbot[-1][0]
+  if(len(chatbot) < 2):
+    return chatbot, message
+  chatbot = chatbot[0:-1]
+  print(chatbot)
+  return chatbot, message
+
 def create_ui():
   with gr.Blocks(title="RWKV角色扮演") as app:
     char_list = get_all_chars()
@@ -62,7 +70,9 @@ def create_ui():
           with gr.Row():
             submit = gr.Button('提交')
             regen = gr.Button('重新生成')
-          delete = gr.Button('清空聊天')
+          with gr.Row():
+            clear_last_btn = gr.Button('清除上一条')
+            delete = gr.Button('清空聊天')
     
     with gr.Tab("角色"):
       with gr.Row():
@@ -93,4 +103,5 @@ def create_ui():
     regen.click(regen_msg, inputs=input_list[1:6], outputs=output_list)
     delete.click(reset_bot, inputs=[greeting], outputs=output_list)
     save_char_btn.click(save_char, inputs=char_input_list, outputs=char_input_list)
+    clear_last_btn.click(clear_last, inputs=[chatbot], outputs=[chatbot, message])
   return app

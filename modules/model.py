@@ -23,10 +23,9 @@ log_name = None
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
 
-gc.collect()
-torch.cuda.empty_cache()
-
 def load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot):
+  gc.collect()
+  torch.cuda.empty_cache()
   global log_name, model_tokens, model_state
   log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
   model_tokens = []
@@ -90,20 +89,20 @@ def run_rnn(tokens, newline_adj = 0):
   return out
 
 def regen_msg(chatbot, top_p, temperature, presence_penalty, frequency_penalty):
-    try:
-        out = load_all_stat(srv, 'chat_pre')
-    except:
-        return
-    return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty)
+  try:
+    out = load_all_stat(srv, 'chat_pre')
+  except:
+    return
+  return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty)
 
 def on_message(message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot):
-    msg = message.replace('\\n','\n').strip()
-    out = load_all_stat(srv, 'chat')
-    new = f"{user}： {msg}\n\n{bot}："
-    out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
-    save_all_stat(srv, 'chat_pre', out)
-    chatbot = chatbot + [[msg, None]]
-    return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty) 
+  msg = message.replace('\\n','\n').strip()
+  out = load_all_stat(srv, 'chat')
+  new = f"{user}： {msg}\n\n{bot}："
+  out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
+  save_all_stat(srv, 'chat_pre', out)
+  chatbot = chatbot + [[msg, None]]
+  return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty) 
 
 def gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty):
   global model_tokens, model_state
