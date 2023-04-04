@@ -42,7 +42,6 @@ def clear_last(chatbot):
   if(len(chatbot) < 2):
     return chatbot, message
   chatbot = chatbot[0:-1]
-  print(chatbot)
   return chatbot, message
 
 def create_ui():
