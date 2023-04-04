@@ -29,14 +29,17 @@ def save_char(user='', bot='', greeting='', bot_persona='', scenario='', example
   return load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot)
 
 def load_config(file_name):
+  char_list = get_all_chars()
   with open('config.json', 'r', encoding='utf-8') as f:
     configs = json.loads(f.read())
-    
-  with open('./chars/' + file_name + '.json', 'r', encoding='utf-8') as f:
+  f_char = char_list[0]
+  if file_name in char_list:
+    f_char = file_name
+  with open('./chars/' + f_char + '.json', 'r', encoding='utf-8') as f:
     char = json.loads(f.read())
   load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'], [])
   chatbot = [[None, char['greeting']]]
-  return configs['top_p'], configs['temperature'], configs['presence'], configs['frequency'], char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'], chatbot
+  return configs['top_p'], configs['temperature'], configs['presence'], configs['frequency'], char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'], chatbot, gr.Dropdown.update(choices=char_list), f_char
 
 def clear_last(chatbot):
   message = chatbot[-1][0]
@@ -47,7 +50,6 @@ def clear_last(chatbot):
 
 def create_ui():
   with gr.Blocks(title="RWKV角色扮演") as app:
-    char_list = get_all_chars()
     if not os.path.isfile('config.json'):
       save_config()
 
@@ -60,7 +62,7 @@ def create_ui():
           frequency_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
           save_conf = gr.Button('保存设置')
           with gr.Row():
-            char_dropdown = gr.Dropdown(char_list, value=char_list[0], interactive=True, label="请选择角色")
+            char_dropdown = gr.Dropdown(None, interactive=True, label="请选择角色")
           refresh_char_btn = gr.Button("刷新角色列表")
           load_char_btn = gr.Button("载入角色")
         with gr.Column(scale=7):
@@ -76,23 +78,23 @@ def create_ui():
     
     with gr.Tab("角色"):
       with gr.Row():
-        with gr.Column(scale=5):
+        with gr.Column():
           user = gr.Textbox(placeholder='AI怎么称呼你', label='你的名字')
           bot = gr.Textbox(placeholder='角色名字', label='角色的名字')
           greeting = gr.Textbox(placeholder='开场白', label='开场白')
-        with gr.Column(scale=5):
+        with gr.Column():
           bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格', lines=10)
       with gr.Row():
-        with gr.Column(scale=5):
+        with gr.Column():
           scenario = gr.TextArea(placeholder='对话发生在什么背景下', label='背景故事', lines=10)
-        with gr.Column(scale=5):
+        with gr.Column():
           example_dialogue = gr.TextArea(placeholder='示例对话', label='示例对话', lines=10)
       save_char_btn = gr.Button('保存角色')
 
     input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
     output_list = [message, chatbot]
     char_input_list = [user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot]
-    reload_list = [top_p, temperature, presence_penalty, frequency_penalty, user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot]
+    reload_list = [top_p, temperature, presence_penalty, frequency_penalty, user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot, char_dropdown, char_dropdown]
 
     app.load(load_config, inputs=[char_dropdown], outputs=reload_list)
     load_char_btn.click(load_config, inputs=[char_dropdown], outputs=reload_list)
