@@ -5,13 +5,18 @@ from modules.model import reset_bot
 from modules.model import regen_msg
 from modules.model import load_init_prompt
 from modules.model import get_prompt
+#冒险模式
+from modules.model import load_background
+from modules.model import on_message_adv
+from modules.model import regen_msg_adv
+from modules.model import reset_adv
 
 def get_all_chars():
   files=os.listdir('./chars')
   char_list = []
   for f in files:
     file_name_arr = f.split('.')
-    if file_name_arr[1] == 'json':
+    if file_name_arr[-1] == 'json':
       char_list.append(file_name_arr[0])
   return char_list
 
@@ -97,7 +102,7 @@ def create_ui():
         with gr.Column():
           example_dialogue = gr.TextArea(placeholder='示例对话', label='示例对话', lines=10)
       save_char_btn = gr.Button('保存角色')
-
+    
     input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
     output_list = [message, chatbot]
     char_input_list = [user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot]
@@ -114,4 +119,31 @@ def create_ui():
     save_char_btn.click(save_char, inputs=char_input_list, outputs=char_input_list)
     clear_last_btn.click(clear_last, inputs=[chatbot], outputs=[chatbot, message])
     get_prompt_btn.click(get_prompt, inputs=input_list[2:7], outputs=[message])
+
+    with gr.Tab('冒险'):
+      with gr.Row():
+        with gr.Column(scale=3):
+          chatbot_adv = gr.Chatbot(show_label=False).style(height=380)
+          message_adv = gr.Textbox(placeholder='请描述你的行动', show_label=False)
+          with gr.Row():
+            with gr.Column(min_width=100):
+              submit_adv = gr.Button('提交')
+            with gr.Column(min_width=100):
+              regen_adv = gr.Button('重新生成')
+          delete_adv = gr.Button('清空冒险')
+        with gr.Column(scale=1):
+          background_text = "请你扮演一个文本冒险游戏，我是游戏主角。这是一个玄幻修真世界，有四大门派。我输入我的行动，请你显示行动结果，并具体描述环境。我的第一个行动是“醒来”，请开始故事。"
+          background_adv = gr.TextArea(placeholder='请输入故事背景', value=background_text, interactive=True, label='故事背景', lines=5)
+          load_background_btn = gr.Button('开始冒险')
+          top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, value=0.6, label='Top P')
+          temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
+          presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
+          frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
+    adv_input_list = [message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv]
+    adv_output_list = [message_adv, chatbot_adv]
+    load_background_btn.click(load_background, inputs=adv_input_list[1:], outputs=[chatbot_adv])
+    message_adv.submit(on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
+    submit_adv.click(on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
+    regen_adv.click(regen_msg_adv, inputs=adv_input_list[1:-1], outputs=[chatbot_adv])
+    delete_adv.click(reset_adv, outputs=adv_output_list)
   return app

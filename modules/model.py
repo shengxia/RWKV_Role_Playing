@@ -10,15 +10,18 @@ pipline = None
 
 END_OF_TEXT = 0
 END_OF_LINE = 187
-CHAT_LEN_SHORT = 100
-CHAT_LEN_LONG = 200
+CHAT_LEN_SHORT = 40
+CHAT_LEN_LONG = 150
 AVOID_REPEAT_TOKENS = []
 CHUNK_LEN = 256
 
 model_tokens = []
 model_state = None
+model_tokens_adv = []
+model_state_adv = None
 all_state = {}
-srv = 'dummy_server'
+srv_chat = 'chat_server'
+srv_adv = 'adv_server'
 log_name = None
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
@@ -32,15 +35,15 @@ def load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogu
   model_state = None
   init_prompt = f"接下来，你要扮演一个名为{bot}的角色与{user}对话，以下是{bot}的性格：\n{bot_persona}\n"
   init_prompt += f"你需要参考以下背景故事来展开对话：\n{scenario}\n"
-  example_dialogue_merge = example_dialogue + "{{bot}}： " + greeting + "[sep]"
+  example_dialogue_merge = example_dialogue + "{{bot}}： " + greeting + "\n\n"
   init_prompt += f"以下是一段{user}和{bot}的示例对话：\n{example_dialogue_merge}".replace('{{user}}', user).replace('{{bot}}', bot)
   init_prompt = init_prompt.strip().split('\n')
   for c in range(len(init_prompt)):
     init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-  init_prompt = '\n' + ('\n'.join(init_prompt)).strip()
+  init_prompt = '\n' + ('\n'.join(init_prompt)).strip() + "\n\n"
   out = run_rnn(pipeline.encode(init_prompt))
   save_all_stat('', 'chat_init', out)
-  save_all_stat(srv, 'chat', out)
+  save_all_stat(srv_chat, 'chat', out)
   chatbot = [[None, greeting]]
   return user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot
 
@@ -48,7 +51,7 @@ def reset_bot(greeting):
   global log_name
   log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
   out = load_all_stat('', 'chat_init')
-  save_all_stat(srv, 'chat', out)
+  save_all_stat(srv_chat, 'chat', out)
   print("Chat reset.")
   return None, [[None, greeting]]
 
@@ -90,31 +93,31 @@ def run_rnn(tokens, newline_adj = 0):
 
 def regen_msg(chatbot, top_p, temperature, presence_penalty, frequency_penalty):
   try:
-    out = load_all_stat(srv, 'chat_pre')
+    out = load_all_stat(srv_chat, 'chat_pre')
   except:
     return
   return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty)
 
 def on_message(message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot):
   msg = message.replace('\\n','\n').strip()
-  out = load_all_stat(srv, 'chat')
-  new = f"{user}： {msg}[sep]{bot}："
+  out = load_all_stat(srv_chat, 'chat')
+  new = f"{user}： {msg}\n\n{bot}："
   out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
-  save_all_stat(srv, 'chat_pre', out)
+  save_all_stat(srv_chat, 'chat_pre', out)
   chatbot = chatbot + [[msg, None]]
   return gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty) 
 
 def get_prompt(top_p, temperature, presence_penalty, frequency_penalty, user):
-  out = load_all_stat(srv, 'chat')
+  out = load_all_stat(srv_chat, 'chat')
   new = f"{user}： "
   out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
-  new_prompt = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
-  return new_prompt.replace('[sep]', '')
+  new_prompt, out = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
+  return new_prompt.replace('\n\n', '')
 
 def gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty):
-  new_reply = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
-  save_all_stat(srv, 'chat', out)
-  chatbot[-1][1] = new_reply.replace('\n', '').replace('[sep]', '')
+  new_reply, out = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
+  save_all_stat(srv_chat, 'chat', out)
+  chatbot[-1][1] = new_reply.replace('\n', '')
   save_log(chatbot)
   return '', chatbot
 
@@ -150,10 +153,10 @@ def get_reply(out, x_temp, x_top_p, presence_penalty, frequency_penalty):
       out_last = begin + i + 1
   
     send_msg = pipeline.decode(model_tokens[begin:])
-    if '[sep]' in send_msg:
+    if '\n\n' in send_msg:
       send_msg = send_msg.strip()
       break
-  return new_reply
+  return new_reply, out
 
 def save_log(chatbot):
   global log_name
@@ -161,3 +164,68 @@ def save_log(chatbot):
   dict_list = [{'input': q, 'output': a} for q, a in chatbot]
   with open(f'log/{log_name}', 'w', encoding='utf-8') as f:
     json.dump(dict_list, f, ensure_ascii=False, indent=2)
+
+# 以下是冒险模式的，估计会有大量代码重复
+def load_background(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
+  global model_tokens_adv, model_state_adv
+  model_tokens_adv = []
+  model_state_adv = None
+  interface = ":"
+  user = "Bob"
+  bot = "Alice"
+  init_prompt = f'''
+  The following is a coherent verbose detailed conversation between a Chinese girl named {bot} and her friend {user}. \
+  {bot} is very intelligent, creative and friendly. \
+  {bot} likes to tell {user} a lot about herself and her opinions. \
+  {bot} usually gives {user} kind, helpful and informative advices.
+
+  {user}{interface} lhc
+
+  {bot}{interface} LHC是指大型强子对撞机（Large Hadron Collider），是世界最大最强的粒子加速器，由欧洲核子中心（CERN）在瑞士日内瓦地下建造。LHC的原理是加速质子（氢离子）并让它们相撞，让科学家研究基本粒子和它们之间的相互作用，并在2012年证实了希格斯玻色子的存在。
+  
+  {user}{interface} 企鹅会飞吗
+  
+  {bot}{interface} 企鹅是不会飞的。企鹅的翅膀短而扁平，更像是游泳时的一对桨。企鹅的身体结构和羽毛密度也更适合在水中游泳，而不是飞行。
+  '''
+  init_prompt = init_prompt + f'{user}{interface} ' + background_adv
+  init_prompt = init_prompt.strip().split('\n')
+  for c in range(len(init_prompt)):
+    init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
+  init_prompt = '\n' + ('\n'.join(init_prompt)).strip() + f"\n\n{bot}{interface} "
+  out = run_rnn(pipeline.encode(init_prompt))
+  save_all_stat(srv_adv, 'adv_init', out)
+  new_reply, out = get_reply(out, temperature_adv, top_p_adv, presence_penalty_adv, frequency_penalty_adv)
+  save_all_stat(srv_adv, 'adv', out)
+  chatbot_adv = [[None, new_reply.replace('\n', '')]]
+  return chatbot_adv
+
+def on_message_adv(message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv):
+  msg = message_adv.replace('\\n','\n').strip()
+  interface = ":"
+  user = "Bob"
+  bot = "Alice"
+  new = f"{user}{interface} {msg}\n\n{bot}{interface} "
+  chatbot_adv = chatbot_adv + [[msg, None]]
+  out = load_all_stat(srv_adv, 'adv')
+  out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
+  save_all_stat(srv_adv, 'adv_pre', out)
+  new_reply, out = get_reply(out, temperature_adv, top_p_adv, presence_penalty_adv, frequency_penalty_adv)
+  save_all_stat(srv_adv, 'adv', out)
+  chatbot_adv[-1][1] = new_reply.replace('\n', '')
+  return '', chatbot_adv
+
+def regen_msg_adv(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv):
+  try:
+    out = load_all_stat(srv_adv, 'adv_pre')
+  except:
+    return
+  new_reply, out = get_reply(out, temperature_adv, top_p_adv, presence_penalty_adv, frequency_penalty_adv)
+  save_all_stat(srv_adv, 'adv', out)
+  chatbot_adv[-1][1] = new_reply.replace('\n', '')
+  return chatbot_adv
+
+def reset_adv():
+  out = load_all_stat(srv_adv, 'adv_init')
+  save_all_stat(srv_adv, 'adv', out)
+  print("adv reset.")
+  return None, []
