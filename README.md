@@ -9,7 +9,7 @@
 
 先安装依赖
 ```
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu117 --upgrade
+pip install torch==1.13.1 --extra-index-url https://download.pytorch.org/whl/cu117 --upgrade
 
 pip install -r requirements.txt
 ```

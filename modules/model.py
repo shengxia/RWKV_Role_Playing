@@ -10,8 +10,8 @@ pipline = None
 
 END_OF_TEXT = 0
 END_OF_LINE = 187
-CHAT_LEN_SHORT = 40
-CHAT_LEN_LONG = 150
+CHAT_LEN_SHORT = 100
+CHAT_LEN_LONG = 200
 AVOID_REPEAT_TOKENS = []
 CHUNK_LEN = 256
 
@@ -32,12 +32,12 @@ def load_init_prompt(user, bot, greeting, bot_persona, scenario, example_dialogu
   model_state = None
   init_prompt = f"接下来，你要扮演一个名为{bot}的角色与{user}对话，以下是{bot}的性格：\n{bot_persona}\n"
   init_prompt += f"你需要参考以下背景故事来展开对话：\n{scenario}\n"
-  example_dialogue_merge = example_dialogue + "{{bot}}： " + greeting + "\n\n"
+  example_dialogue_merge = example_dialogue + "{{bot}}： " + greeting + "[sep]"
   init_prompt += f"以下是一段{user}和{bot}的示例对话：\n{example_dialogue_merge}".replace('{{user}}', user).replace('{{bot}}', bot)
   init_prompt = init_prompt.strip().split('\n')
   for c in range(len(init_prompt)):
     init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-  init_prompt = '\n' + ('\n'.join(init_prompt)).strip() + '\n\n'
+  init_prompt = '\n' + ('\n'.join(init_prompt)).strip()
   out = run_rnn(pipeline.encode(init_prompt))
   save_all_stat('', 'chat_init', out)
   save_all_stat(srv, 'chat', out)
@@ -98,7 +98,7 @@ def regen_msg(chatbot, top_p, temperature, presence_penalty, frequency_penalty):
 def on_message(message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot):
   msg = message.replace('\\n','\n').strip()
   out = load_all_stat(srv, 'chat')
-  new = f"{user}： {msg}\n\n{bot}："
+  new = f"{user}： {msg}[sep]{bot}："
   out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
   save_all_stat(srv, 'chat_pre', out)
   chatbot = chatbot + [[msg, None]]
@@ -109,12 +109,12 @@ def get_prompt(top_p, temperature, presence_penalty, frequency_penalty, user):
   new = f"{user}： "
   out = run_rnn(pipeline.encode(new), newline_adj=-999999999)
   new_prompt = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
-  return new_prompt.replace('\n\n', '')
+  return new_prompt.replace('[sep]', '')
 
 def gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty):
   new_reply = get_reply(out, temperature, top_p, presence_penalty, frequency_penalty)
   save_all_stat(srv, 'chat', out)
-  chatbot[-1][1] = new_reply.replace('\n', '')
+  chatbot[-1][1] = new_reply.replace('\n', '').replace('[sep]', '')
   save_log(chatbot)
   return '', chatbot
 
@@ -150,7 +150,7 @@ def get_reply(out, x_temp, x_top_p, presence_penalty, frequency_penalty):
       out_last = begin + i + 1
   
     send_msg = pipeline.decode(model_tokens[begin:])
-    if '\n\n' in send_msg:
+    if '[sep]' in send_msg:
       send_msg = send_msg.strip()
       break
   return new_reply
