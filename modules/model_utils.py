@@ -16,8 +16,8 @@ class ModelUtils:
   CHUNK_LEN = 256
   END_OF_TEXT = 0
   END_OF_LINE = 187
-  CHAT_LEN_SHORT = 40
-  CHAT_LEN_LONG = 150
+  CHAT_LEN_SHORT = 100
+  CHAT_LEN_LONG = 500
   all_state = {}
   
   def __init__(self, args):

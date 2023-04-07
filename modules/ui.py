@@ -10,25 +10,26 @@ class UI:
   model_utils = None
   chat_model = None
   adv_model = None
+  char_path = './chars'
+  adv_path = './adventure'
 
   def __init__(self, model_utils:ModelUtils):
     self.model_utils = model_utils
     self.chat_model = Chat(model_utils)
     self.adv_model = Adventure(model_utils)
 
-  # 获取所有的角色
-  def get_all_chars(self):
-    files=os.listdir('./chars')
-    char_list = []
+  def get_json_files(self, path):
+    files=os.listdir(path)
+    file_list = []
     for f in files:
       file_name_arr = f.split('.')
       if file_name_arr[-1] == 'json':
-        char_list.append(file_name_arr[0])
-    return char_list
+        file_list.append(file_name_arr[0])
+    return file_list
 
   # 更新角色列表
   def update_chars_list(self):
-    char_list = self.get_all_chars()
+    char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
 
   # 保存对话模式的配置
@@ -42,17 +43,17 @@ class UI:
       json.dump({'top_p': top_p, 'temperature': temperature, 'presence': presence_penalty, 'frequency': frequency_penalty}, f, indent=2)
 
   # 保存角色
-  def save_char(self, user='', bot='', greeting='', bot_persona='', scenario='', example_dialogue='', chatbot=[]):
-    with open('./chars/' + bot + '.json', 'w', encoding='utf8') as f:
+  def save_char(self, user='', bot='', greeting='', bot_persona='', scenario='', example_dialogue=''):
+    with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
       json.dump({'user': user, 'bot': bot, 'greeting': greeting, 'bot_persona': bot_persona, 'scenario': scenario, 'example_dialogue': example_dialogue}, f, indent=2, ensure_ascii=False)
-    char_list = self.get_all_chars()
+    char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
 
   # 载入角色
   def load_char(self, file_name):
     if not file_name:
       raise gr.Error("请选择一个角色")
-    with open('./chars/' + file_name + '.json', 'r', encoding='utf-8') as f:
+    with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
     self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'], [])
     chatbot = [[None, char['greeting']]]
@@ -64,7 +65,7 @@ class UI:
       char['scenario'], 
       char['example_dialogue'], 
       chatbot, 
-      gr.Text.update(interactive=True), 
+      gr.Textbox.update(interactive=True), 
       gr.Button.update(interactive=True), 
       gr.Button.update(interactive=True), 
       gr.Button.update(interactive=True), 
@@ -82,15 +83,36 @@ class UI:
     return chatbot, message
   
   def load_adv_story(self, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
-    chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
+    flag = False
+    if background_adv:
+      flag = True
+      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
     return_arr = (
       chatbot_adv,
-      gr.Text.update(interactive=True),
-      gr.Button.update(interactive=True),
-      gr.Button.update(interactive=True),
-      gr.Button.update(interactive=True)
+      gr.Textbox.update(interactive=flag),
+      gr.Button.update(interactive=flag),
+      gr.Button.update(interactive=flag),
+      gr.Button.update(interactive=flag)
     )
     return return_arr
+    
+  def change_adv(self, adv_dropdown):
+    if not adv_dropdown:
+      return None, None
+    with open(f"{self.adv_path}/{adv_dropdown}.json", 'r', encoding='utf-8') as f:
+      adv = json.loads(f.read())
+    return adv['adv_title'], adv['adv_detail']
+  
+  def refresh_adv(self):
+    adv_list = self.get_json_files(self.adv_path)
+    return gr.Dropdown.update(choices=adv_list)
+  
+  def save_adv(self, adv_title, adv_detail):
+    if adv_title and adv_detail:
+      with open(f"{self.adv_path}/{adv_title}.json", 'w', encoding='utf8') as f:
+        json.dump({'adv_title': adv_title, 'adv_detail': adv_detail}, f, indent=2, ensure_ascii=False)
+    adv_list = self.get_json_files(self.adv_path)
+    return gr.Dropdown.update(choices=adv_list)
 
   # 初始化UI
   def init_ui(self):
@@ -98,8 +120,21 @@ class UI:
       configs = json.loads(f.read())
     with open('config_adv.json', 'r', encoding='utf-8') as f:
       configs_adv = json.loads(f.read())
-    char_list = self.get_all_chars()
-    return configs['top_p'], configs['temperature'], configs['presence'], configs['frequency'], gr.Dropdown.update(choices=char_list), configs_adv['top_p'], configs_adv['temperature'], configs_adv['presence'], configs_adv['frequency']
+    char_list = self.get_json_files(self.char_path)
+    adv_list = self.get_json_files(self.adv_path)
+    return_arr = (
+      configs['top_p'], 
+      configs['temperature'], 
+      configs['presence'], 
+      configs['frequency'], 
+      gr.Dropdown.update(choices=char_list), 
+      configs_adv['top_p'], 
+      configs_adv['temperature'], 
+      configs_adv['presence'], 
+      configs_adv['frequency'],
+      gr.Dropdown.update(choices=adv_list)
+    )
+    return return_arr
 
   # 创建UI
   def create_ui(self):
@@ -160,13 +195,13 @@ class UI:
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
-      refresh_char_btn.click(self.update_chars_list, inputs=None, outputs=[char_dropdown])
+      refresh_char_btn.click(self.update_chars_list, outputs=[char_dropdown])
       save_conf.click(self.save_config, inputs=input_list[2:6])
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:6], outputs=output_list)
       delete.click(self.chat_model.reset_bot, inputs=[greeting], outputs=output_list)
-      save_char_btn.click(self.save_char, inputs=char_input_list, outputs=[char_dropdown])
+      save_char_btn.click(self.save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.clear_last, inputs=[chatbot], outputs=[chatbot, message])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:7], outputs=[message])
 
@@ -182,25 +217,47 @@ class UI:
                 regen_adv = gr.Button('重新生成', interactive=False)
             delete_adv = gr.Button('清空冒险', interactive=False)
           with gr.Column(scale=1):
-            background_text = "请你扮演一个文本冒险游戏，我是游戏主角。这是一个玄幻修真世界，有四大门派。我输入我的行动，请你显示行动结果，并具体描述环境。我的第一个行动是“醒来”，请开始故事。"
-            background_adv = gr.TextArea(placeholder='请输入故事背景', value=background_text, interactive=True, label='故事背景', lines=5)
-            load_background_btn = gr.Button('开始冒险')
-            top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, value=0.6, label='Top P')
-            temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
-            presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
-            frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
-            save_conf_adv = gr.Button('保存设置')
-      adv_input_list = [message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv]
+            adv_dropdown = gr.Dropdown(None, interactive=True, label="请选择冒险故事")
+            refresh_adv_btn = gr.Button("刷新故事列表")
+            adv_title = gr.Textbox(placeholder='请输入故事标题', label='故事标题')
+            adv_detail = gr.TextArea(placeholder='请输入故事背景', interactive=True, label='故事背景', lines=5)
+            with gr.Row():
+              with gr.Column(min_width=100):
+                load_adv_btn = gr.Button('开始冒险')
+              with gr.Column(min_width=100):
+                save_adv_btn = gr.Button('保存故事')
+        with gr.Row():
+          top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, value=0.6, label='Top P')
+          temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
+          presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
+          frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
+        with gr.Row():
+          save_conf_adv = gr.Button('保存设置')
+      adv_input_list = [message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, adv_detail]
       adv_output_list = [message_adv, chatbot_adv]
       adv_interactive_list = [message_adv, submit_adv, regen_adv, delete_adv]
-      load_background_btn.click(self.load_adv_story, inputs=adv_input_list[1:], outputs=[chatbot_adv] + adv_interactive_list)
+      load_adv_btn.click(self.load_adv_story, inputs=adv_input_list[1:], outputs=[chatbot_adv] + adv_interactive_list)
       message_adv.submit(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
       submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
       regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-1], outputs=[chatbot_adv])
       delete_adv.click(self.adv_model.reset_adv, outputs=adv_output_list)
       save_conf_adv.click(self.save_config_adv, inputs=input_list[2:6])
+      adv_dropdown.change(self.change_adv, inputs=[adv_dropdown], outputs=[adv_title, adv_detail])
+      refresh_adv_btn.click(self.refresh_adv, outputs=[adv_dropdown])
+      save_adv_btn.click(self.save_adv, inputs=[adv_title, adv_detail], outputs=[adv_dropdown])
 
-      reload_list = [top_p, temperature, presence_penalty, frequency_penalty, char_dropdown, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv]
+      reload_list = [
+        top_p, 
+        temperature, 
+        presence_penalty, 
+        frequency_penalty, 
+        char_dropdown, 
+        top_p_adv, 
+        temperature_adv, 
+        presence_penalty_adv, 
+        frequency_penalty_adv, 
+        adv_dropdown
+      ]
       app.load(self.init_ui, outputs=reload_list)
 
     return app
