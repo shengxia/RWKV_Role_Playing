@@ -7,14 +7,13 @@ class Chat:
   model_utils = None
   model_tokens = []
   model_state = None
-  char_loaded = False
   log_name = ''
   srv_chat = 'chat_server'
 
   def __init__(self, model_utils:ModelUtils):
     self.model_utils = model_utils
 
-  def load_init_prompt(self, user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot):
+  def load_init_prompt(self, user, bot, greeting, bot_persona, scenario, example_dialogue):
     self.log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
     self.model_tokens = []
     self.model_state = None
@@ -31,9 +30,6 @@ class Chat:
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, self.model_tokens, self.model_state)
     gc.collect()
     torch.cuda.empty_cache()
-    chatbot = [[None, greeting]]
-    self.char_loaded = True
-    return user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot
   
   def reset_bot(self, greeting):
     self.log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
@@ -45,7 +41,7 @@ class Chat:
     try:
       out, self.model_tokens, self.model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
     except:
-      return
+      return '', chatbot
     return self.gen_msg(out, chatbot, top_p, temperature, presence_penalty, frequency_penalty)
   
   def on_message(self, message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot):

@@ -64,7 +64,7 @@ class Adventure:
     try:
       out, self.model_tokens, self.model_state = self.model_utils.load_all_stat(self.srv_adv, 'adv_pre')
     except:
-      return
+      return chatbot_adv
     new_reply, out, self.model_tokens, self.model_state = self.model_utils.get_reply(self.model_tokens, self.model_state, out, temperature_adv, top_p_adv, presence_penalty_adv, frequency_penalty_adv)
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, self.model_tokens, self.model_state)
     chatbot_adv[-1][1] = new_reply.replace('\n', '')

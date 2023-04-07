@@ -55,7 +55,7 @@ class UI:
       raise gr.Error("请选择一个角色")
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'], [])
+    self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'])
     chatbot = [[None, char['greeting']]]
     return_arr = (
       char['user'], 

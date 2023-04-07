@@ -13,7 +13,7 @@ class ModelUtils:
   model_path = None
   strategy = None
   AVOID_REPEAT_TOKENS = []
-  CHUNK_LEN = 256
+  CHUNK_LEN = 512
   END_OF_TEXT = 0
   END_OF_LINE = 187
   CHAT_LEN_SHORT = 100

@@ -18,7 +18,6 @@ from modules.model_utils import ModelUtils
 from modules.ui import UI
 
 if __name__ == "__main__":
-  print(cmd_opts)
   model_util = ModelUtils(cmd_opts)
   model_util.load_model()
   ui = UI(model_util)
