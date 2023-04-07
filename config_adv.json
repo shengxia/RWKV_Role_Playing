@@ -1,0 +1,6 @@
+{
+  "top_p": 0.5,
+  "temperature": 1,
+  "presence": 0.5,
+  "frequency": 0.5
+}
