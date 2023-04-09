@@ -13,11 +13,11 @@ class ModelUtils:
   model_path = None
   strategy = None
   AVOID_REPEAT_TOKENS = []
-  CHUNK_LEN = 512
+  CHUNK_LEN = 256
   END_OF_TEXT = 0
   END_OF_LINE = 187
-  CHAT_LEN_SHORT = 100
-  CHAT_LEN_LONG = 500
+  CHAT_LEN_SHORT = 40
+  CHAT_LEN_LONG = 150
   all_state = {}
   
   def __init__(self, args):
@@ -91,4 +91,6 @@ class ModelUtils:
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
+    if len(model_tokens) > 1000:
+      model_tokens = model_tokens[len(model_tokens) - 1000:]
     return new_reply, out, model_tokens, model_state
