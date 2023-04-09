@@ -54,7 +54,7 @@ python webui.py --listen --model model/fp16i8_RWKV-4-Pile-7B-EngChn-test5-202303
 
 ### 3. top_p、temperature、presence、frequency这四个参数有什么设置技巧吗？
 
-老实说我也不明白，我代码里面预置的参数是参考[这篇文章](https://zhuanlan.zhihu.com/p/616353805)的设置，top_p越高，逻辑性越强，但是会降低多样性，temperature越低，逻辑性越强，但会降低多样性，这东西我们都需要摸索，也欢迎大家分享自己的经验。
+老实说我也不明白，我代码里面预置的参数是参考[这篇文章](https://zhuanlan.zhihu.com/p/616353805)的设置，top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输出；temperature值越低，结果就越确定，因为总是选择概率最高的下一个词/token，拉高该值，其他可能的token的概率就会变大，随机性就越大，输出越多样化、越具创造性。这东西我们都需要摸索，也欢迎大家分享自己的经验。
 
 ### 4. 还有其他的一些经验吗？
 
