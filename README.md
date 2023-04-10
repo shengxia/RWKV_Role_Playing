@@ -34,7 +34,7 @@ python webui.py --listen --model model/fp16i8_RWKV-4-Pile-7B-EngChn-test5-202303
 | --cuda_on | 控制RWKV_CUDA_ON这个环境变量的，0-禁用，1-启用 |
 | --jit_on | 控制RWKV_JIT_ON这个环境变量的，0-禁用，1-启用 |
 
-模型的加载方式（--strategy）我默认使用的是"cuda fp16i8"，如果想使用其他的加载方式可以自行调整该参数，具体有哪些值可以参考[这个文章](https://zhuanlan.zhihu.com/p/609154637)
+模型的加载方式（--strategy）我默认使用的是"cuda fp16i8"，如果想使用其他的加载方式可以自行调整该参数，具体有哪些值可以参考[这个文章](https://zhuanlan.zhihu.com/p/609154637)或者这张图![图片](./pic/4.jpg)
 
 ## FAQ
 
