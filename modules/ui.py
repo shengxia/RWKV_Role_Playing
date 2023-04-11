@@ -4,12 +4,15 @@ from modules.model_utils import ModelUtils
 from modules.chat import Chat
 #冒险模式
 from modules.adventure import Adventure
+#对话模式
+from modules.conversation import Conversation
 
 class UI:
 
   model_utils = None
   chat_model = None
   adv_model = None
+  con_model = None
   char_path = './chars'
   adv_path = './adventure'
 
@@ -17,6 +20,7 @@ class UI:
     self.model_utils = model_utils
     self.chat_model = Chat(model_utils)
     self.adv_model = Adventure(model_utils)
+    self.con_model = Conversation(model_utils)
 
   def get_json_files(self, path):
     files=os.listdir(path)
@@ -32,7 +36,7 @@ class UI:
     char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
 
-  # 保存对话模式的配置
+  # 保存角色扮演模式的配置
   def save_config(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open('config.json', 'w', encoding='utf8') as f:
       json.dump({'top_p': top_p, 'temperature': temperature, 'presence': presence_penalty, 'frequency': frequency_penalty}, f, indent=2)
@@ -40,6 +44,11 @@ class UI:
   # 保存冒险模式的配置
   def save_config_adv(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open('config_adv.json', 'w', encoding='utf8') as f:
+      json.dump({'top_p': top_p, 'temperature': temperature, 'presence': presence_penalty, 'frequency': frequency_penalty}, f, indent=2)
+  
+  # 保存会话模式的配置
+  def save_config_con(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
+    with open('config_con.json', 'w', encoding='utf8') as f:
       json.dump({'top_p': top_p, 'temperature': temperature, 'presence': presence_penalty, 'frequency': frequency_penalty}, f, indent=2)
 
   # 保存角色
@@ -113,6 +122,16 @@ class UI:
         json.dump({'adv_title': adv_title, 'adv_detail': adv_detail}, f, indent=2, ensure_ascii=False)
     adv_list = self.get_json_files(self.adv_path)
     return gr.Dropdown.update(choices=adv_list)
+  
+  def init_conversation(self):
+    self.con_model.init_conversation()
+    return_arr = (
+      gr.Textbox.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True),
+      gr.Button.update(interactive=True)
+    )
+    return return_arr
 
   # 初始化UI
   def init_ui(self):
@@ -120,6 +139,8 @@ class UI:
       configs = json.loads(f.read())
     with open('config_adv.json', 'r', encoding='utf-8') as f:
       configs_adv = json.loads(f.read())
+    with open('config_con.json', 'r', encoding='utf-8') as f:
+      configs_con = json.loads(f.read())
     char_list = self.get_json_files(self.char_path)
     adv_list = self.get_json_files(self.adv_path)
     return_arr = (
@@ -132,7 +153,11 @@ class UI:
       configs_adv['temperature'], 
       configs_adv['presence'], 
       configs_adv['frequency'],
-      gr.Dropdown.update(choices=adv_list)
+      gr.Dropdown.update(choices=adv_list),
+      configs_con['top_p'], 
+      configs_con['temperature'], 
+      configs_con['presence'], 
+      configs_con['frequency']
     )
     return return_arr
 
@@ -241,10 +266,41 @@ class UI:
       submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
       regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-1], outputs=[chatbot_adv])
       delete_adv.click(self.adv_model.reset_adv, outputs=adv_output_list)
-      save_conf_adv.click(self.save_config_adv, inputs=input_list[2:6])
+      save_conf_adv.click(self.save_config_adv, inputs=adv_input_list[2:6])
       adv_dropdown.change(self.change_adv, inputs=[adv_dropdown], outputs=[adv_title, adv_detail])
       refresh_adv_btn.click(self.refresh_adv, outputs=[adv_dropdown])
       save_adv_btn.click(self.save_adv, inputs=[adv_title, adv_detail], outputs=[adv_dropdown])
+
+      with gr.Tab('对话'):
+        with gr.Row():
+          with gr.Column(scale=3):
+            chatbot_con = gr.Chatbot(show_label=False).style(height=380)
+            message_con = gr.Textbox(placeholder='随便聊聊', show_label=False, interactive=False)
+            with gr.Row():
+              with gr.Column(min_width=100):
+                submit_con = gr.Button('提交', interactive=False)
+              with gr.Column(min_width=100):
+                regen_con = gr.Button('重新生成', interactive=False)
+              with gr.Column(min_width=100):
+                init_con_btn = gr.Button('开启对话')
+              with gr.Column(min_width=100):
+                clear_con = gr.Button('清空对话', interactive=False)
+        with gr.Row():
+          top_p_con = gr.Slider(minimum=0, maximum=1.0, step=0.01, value=0.6, label='Top P')
+          temperature_con = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
+          presence_penalty_con = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
+          frequency_penalty_con = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
+        with gr.Row():
+          save_conf_con = gr.Button('保存设置')
+      con_input_list = [message_con, chatbot_con, top_p_con, temperature_con, presence_penalty_con, frequency_penalty_con]
+      con_output_list = [message_con, chatbot_con]
+      con_interactive_list = [message_con, submit_con, regen_con, clear_con]
+      init_con_btn.click(self.init_conversation, outputs=con_interactive_list)
+      message_con.submit(self.con_model.on_message_con, inputs=con_input_list, outputs=con_output_list)
+      submit_con.click(self.con_model.on_message_con, inputs=con_input_list, outputs=con_output_list)
+      regen_con.click(self.con_model.regen_msg_con, inputs=con_input_list[1:], outputs=[chatbot_con])
+      clear_con.click(self.con_model.reset_con, outputs=con_output_list)
+      save_conf_con.click(self.save_config_con, inputs=con_input_list[2:6])
 
       reload_list = [
         top_p, 
@@ -256,7 +312,11 @@ class UI:
         temperature_adv, 
         presence_penalty_adv, 
         frequency_penalty_adv, 
-        adv_dropdown
+        adv_dropdown,
+        top_p_con, 
+        temperature_con, 
+        presence_penalty_con, 
+        frequency_penalty_con
       ]
       app.load(self.init_ui, outputs=reload_list)
 
