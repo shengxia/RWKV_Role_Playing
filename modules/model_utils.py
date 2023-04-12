@@ -19,6 +19,8 @@ class ModelUtils:
   CHAT_LEN_SHORT = 40
   CHAT_LEN_LONG = 150
   all_state = {}
+  user = "Bob"
+  bot = "Alice"
   
   def __init__(self, args):
     self.model_path = args.model
@@ -57,7 +59,11 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
-  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty):
+  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot=''):
+    if not user:
+      user = self.user
+    if not bot:
+      bot = self.bot
     new_reply = ''
     begin = len(model_tokens)
     out_last = begin
@@ -88,9 +94,41 @@ class ModelUtils:
         out_last = begin + i + 1
     
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      if '\n\n' in send_msg:
-        send_msg = send_msg.strip()
+      stop_text = (f'{user}：', f'{user}:', f'{bot}：', f'{bot}:')
+      stop_flag = False
+      for st in stop_text:
+        if send_msg.endswith(st):
+          send_msg = send_msg[:-len(st)].strip()
+          stop_flag = True
+          break
+      if stop_flag:
         break
+      # if '\n\n' in send_msg:
+      #   send_msg = send_msg.strip()
+      #   break
     if len(model_tokens) > 1000:
       model_tokens = model_tokens[len(model_tokens) - 1000:]
-    return new_reply, out, model_tokens, model_state
+    return send_msg, out, model_tokens, model_state
+  
+  def get_default_prompt(self, background_adv = '', user='', bot=''):
+    if not user:
+      user = self.user
+    if not bot:
+      bot = self.bot
+    init_prompt = f'''
+    The following is a coherent verbose detailed conversation between a Chinese girl named {bot} and her friend {user}. \
+    {bot} is very intelligent, creative and friendly. \
+    {bot} likes to tell {user} a lot about herself and her opinions. \
+    {bot} usually gives {user} kind, helpful and informative advices.
+    {user}: lhc
+    {bot}: LHC是指大型强子对撞机（Large Hadron Collider），是世界最大最强的粒子加速器，由欧洲核子中心（CERN）在瑞士日内瓦地下建造。LHC的原理是加速质子（氢离子）并让它们相撞，让科学家研究基本粒子和它们之间的相互作用，并在2012年证实了希格斯玻色子的存在。
+    {user}: 企鹅会飞吗
+    {bot}: 企鹅是不会飞的。企鹅的翅膀短而扁平，更像是游泳时的一对桨。企鹅的身体结构和羽毛密度也更适合在水中游泳，而不是飞行。
+    '''
+    if background_adv:
+      init_prompt = init_prompt + f'\n{user}: ' + background_adv
+    init_prompt = init_prompt.strip().split('\n')
+    for c in range(len(init_prompt)):
+      init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
+    init_prompt = '\n' + ('\n'.join(init_prompt)).strip() + f"\n{bot}: "
+    return init_prompt
