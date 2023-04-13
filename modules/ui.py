@@ -242,6 +242,11 @@ class UI:
       clear_last_btn.click(self.clear_last, inputs=[chatbot], outputs=[chatbot, message])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message])
 
+      with gr.Tab('调试'):
+        test_area = gr.TextArea(placeholder='输出结果', label='输出')
+        test_btn = gr.Button('查看token')
+      test_btn.click(self.chat_model.get_test_data, outputs=[test_area])
+
       with gr.Tab('冒险'):
         with gr.Row():
           with gr.Column(scale=3):
@@ -275,9 +280,9 @@ class UI:
       adv_output_list = [message_adv, chatbot_adv]
       adv_interactive_list = [message_adv, submit_adv, regen_adv, delete_adv]
       load_adv_btn.click(self.load_adv_story, inputs=adv_input_list[1:], outputs=[chatbot_adv] + adv_interactive_list)
-      message_adv.submit(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
-      submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
-      regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-1], outputs=[chatbot_adv])
+      message_adv.submit(self.adv_model.on_message_adv, inputs=adv_input_list[:-2] + [max_token_adv], outputs=adv_output_list)
+      submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-2] + [max_token_adv], outputs=adv_output_list)
+      regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-2] + [max_token_adv], outputs=[chatbot_adv])
       delete_adv.click(self.adv_model.reset_adv, outputs=adv_output_list)
       save_conf_adv.click(self.save_config_adv, inputs=adv_input_list[2:6] + [max_token_adv])
       adv_dropdown.change(self.change_adv, inputs=[adv_dropdown], outputs=[adv_title, adv_detail])

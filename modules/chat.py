@@ -59,7 +59,7 @@ class Chat:
   
   def gen_msg(self, out, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot, max_token):
     new_reply, out, self.model_tokens, self.model_state = self.model_utils.get_reply(self.model_tokens, self.model_state, out, temperature, top_p, presence_penalty, frequency_penalty, user, bot, max_token)
-    self.model_utils.save_all_stat(self.model_tokens, self.model_state, self.srv_chat, 'chat', out)
+    self.model_utils.save_all_stat(self.srv_chat, 'chat', out, self.model_tokens, self.model_state)
     chatbot[-1][1] = new_reply.replace('\n', '')
     self.save_log(chatbot)
     return '', chatbot
@@ -74,4 +74,8 @@ class Chat:
     out, self.model_tokens, self.model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     new_prompt, out, self.model_tokens, self.model_state = self.model_utils.get_reply(self.model_tokens, self.model_state, out, temperature, top_p, presence_penalty, frequency_penalty, user, bot, max_token)
     return new_prompt.replace('\n', '')
+  
+  def get_test_data(self):
+    out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+    return self.model_utils.pipeline.decode(model_tokens)
   
