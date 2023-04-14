@@ -34,13 +34,12 @@ class UI:
     char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
   
-  def save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty, max_token):
+  def save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty):
     config = {
       'top_p': top_p, 
       'temperature': temperature, 
       'presence': presence_penalty, 
-      'frequency': frequency_penalty,
-      'max_token': max_token
+      'frequency': frequency_penalty
     }
     json.dump(config, f, indent=2)
 
