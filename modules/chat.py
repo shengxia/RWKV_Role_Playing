@@ -23,26 +23,28 @@ class Chat:
     self.log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
     model_tokens = []
     model_state = None
-    init_prompt = f"你是{bot}，{bot_persona}，{bot}称呼我为{user}。\n"
-    init_prompt += f"{bot}: 我的名字叫{bot}，你叫什么名字？（感到好奇）\n"
-    init_prompt += f"{user}: 你可以叫我{user}。\n"
-    init_prompt += f"{bot}: 你好啊，{user}，很高兴认识你。（得到了回答，开心地伸出了手想要和{user}握手）\n"
-    if greeting:
-      init_prompt += f"{user}: 我也很高兴认识你，{bot}。\n"
-      init_prompt += f"{bot}: {greeting}\n{user}: "
-    init_prompt = init_prompt.strip().split('\n')
-    for c in range(len(init_prompt)):
-      init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-    init_prompt = '\n'.join(init_prompt).strip()
-    init_prompt = init_prompt.replace('\n\n', '\n')
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
-    self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
-    self.chatbot = [[None, greeting]]
     if os.path.exists(f'save/{bot}.sav'):
       data = self.load_chat(bot)
       self.model_utils.save_all_stat(self.srv_chat, 'chat', data['out'], data['model_tokens'], data['model_state'])
+      self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
+      self.model_utils.save_all_stat('', 'chat_init', data['out_init'], data['model_tokens_init'], data['model_state_init'])
       self.chatbot = data['chatbot']
     else:
+      init_prompt = f"你是{bot}，{bot_persona}，{bot}称呼我为{user}。\n"
+      init_prompt += f"{bot}: 我的名字叫{bot}，你叫什么名字？（感到好奇）\n"
+      init_prompt += f"{user}: 你可以叫我{user}。\n"
+      init_prompt += f"{bot}: 你好啊，{user}，很高兴认识你。（得到了回答，开心地伸出了手想要和{user}握手）\n"
+      if greeting:
+        init_prompt += f"{user}: 我也很高兴认识你，{bot}。\n"
+        init_prompt += f"{bot}: {greeting}\n{user}: "
+      init_prompt = init_prompt.strip().split('\n')
+      for c in range(len(init_prompt)):
+        init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
+      init_prompt = '\n'.join(init_prompt).strip()
+      init_prompt = init_prompt.replace('\n\n', '\n')
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+      self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
+      self.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     gc.collect()
     torch.cuda.empty_cache()
@@ -53,7 +55,6 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.chatbot = [[None, greeting]]
-    self.save_chat(bot)
     return None, self.generate_cai_chat_html(user, bot)
   
   def regen_msg(self, top_p, temperature, presence_penalty, frequency_penalty, user, bot):
@@ -96,15 +97,26 @@ class Chat:
     if(len(self.chatbot) < 2):
       return self.generate_cai_chat_html(user, bot), message
     self.chatbot = self.chatbot[0:-1]
+    save_file = f'save/{bot}.sav'
+    if os.path.exists(save_file):
+      os.remove(save_file)
     return self.generate_cai_chat_html(user, bot), message
   
   def save_chat(self, bot):
     os.makedirs('save', exist_ok=True)
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+    out_pre, model_tokens_pre, model_state_pre = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
+    out_init, model_tokens_init, model_state_init = self.model_utils.load_all_stat('', 'chat_init')
     data = {
       "out": out,
       "model_tokens": model_tokens,
       "model_state": model_state,
+      "out_pre": out_pre,
+      "model_tokens_pre": model_tokens_pre,
+      "model_state_pre": model_state_pre,
+      "out_init": out_init,
+      "model_tokens_init": model_tokens_init,
+      "model_state_init": model_state_init,
       "chatbot": self.chatbot
     }
     with open(f'save/{bot}.sav', 'wb') as f:
