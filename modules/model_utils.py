@@ -59,7 +59,7 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
-  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot='', max_token=1024):
+  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot=''):
     if not user:
       user = self.user
     if not bot:
@@ -103,11 +103,6 @@ class ModelUtils:
           break
       if stop_flag:
         break
-      # if '\n\n' in send_msg:
-      #   send_msg = send_msg.strip()
-      #   break
-    if len(model_tokens) > max_token:
-      model_tokens = model_tokens[len(model_tokens) - max_token:]
     return send_msg, out, model_tokens, model_state
   
   def get_default_prompt(self, background_adv = '', user='', bot=''):

@@ -4,26 +4,21 @@ from modules.model_utils import ModelUtils
 from modules.chat import Chat
 #冒险模式
 from modules.adventure import Adventure
-#对话模式
-from modules.conversation import Conversation
 
 class UI:
 
   model_utils = None
   chat_model = None
   adv_model = None
-  con_model = None
   char_path = './chars'
   adv_path = './adventure'
   config_role_path = './config/config_role.json'
   config_adv_path = './config/config_adv.json'
-  config_con_path = './config/config_con.json'
 
   def __init__(self, model_utils:ModelUtils):
     self.model_utils = model_utils
     self.chat_model = Chat(model_utils)
     self.adv_model = Adventure(model_utils)
-    self.con_model = Conversation(model_utils)
 
   def get_json_files(self, path):
     files=os.listdir(path)
@@ -50,20 +45,15 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5, max_token=1024):
+  def save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty, max_token)
+      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
     
   # 保存冒险模式的配置
-  def save_config_adv(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5, max_token=1024):
+  def save_config_adv(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open(self.config_adv_path, 'w', encoding='utf8') as f:
-      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty, max_token)
+      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
   
-  # 保存会话模式的配置
-  def save_config_con(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5, max_token=1024):
-    with open(self.config_con_path, 'w', encoding='utf8') as f:
-      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty, max_token)
-
   # 保存角色
   def save_char(self, user='', bot='', greeting='', bot_persona=''):
     with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
@@ -102,11 +92,11 @@ class UI:
     chatbot = chatbot[0:-1]
     return chatbot, message
   
-  def load_adv_story(self, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv, max_token):
+  def load_adv_story(self, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
     flag = False
     if background_adv:
       flag = True
-      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv, max_token)
+      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
     return_arr = (
       chatbot_adv,
       gr.Textbox.update(interactive=flag),
@@ -150,8 +140,6 @@ class UI:
       configs_role = json.loads(f.read())
     with open(self.config_adv_path, 'r', encoding='utf-8') as f:
       configs_adv = json.loads(f.read())
-    with open(self.config_con_path, 'r', encoding='utf-8') as f:
-      configs_con = json.loads(f.read())
     char_list = self.get_json_files(self.char_path)
     adv_list = self.get_json_files(self.adv_path)
     return_arr = (
@@ -159,19 +147,12 @@ class UI:
       configs_role['temperature'], 
       configs_role['presence'], 
       configs_role['frequency'], 
-      configs_role['max_token'], 
       gr.Dropdown.update(choices=char_list), 
       configs_adv['top_p'], 
       configs_adv['temperature'], 
       configs_adv['presence'], 
       configs_adv['frequency'],
-      configs_adv['max_token'], 
-      gr.Dropdown.update(choices=adv_list),
-      configs_con['top_p'], 
-      configs_con['temperature'], 
-      configs_con['presence'], 
-      configs_con['frequency'],
-      configs_con['max_token']
+      gr.Dropdown.update(choices=adv_list)
     )
     return return_arr
 
@@ -182,8 +163,6 @@ class UI:
         self.save_config_role()
       if not os.path.isfile(self.config_adv_path):
         self.save_config_adv()
-      if not os.path.isfile(self.config_con_path):
-        self.save_config_con()
 
       with gr.Tab("聊天"):
         with gr.Row():
@@ -213,7 +192,6 @@ class UI:
             temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
             presence_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Presence Penalty')
             frequency_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
-            max_token = gr.Slider(minimum=1024, maximum=8192, step=1, label='最大token数量')
             save_conf = gr.Button('保存设置')
 
       with gr.Tab("角色"):
@@ -226,14 +204,14 @@ class UI:
             bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格', lines=10)
         save_char_btn = gr.Button('保存角色')
       
-      input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot, max_token]
+      input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
       output_list = [message, chatbot]
       char_input_list = [user, bot, greeting, bot_persona, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.update_chars_list, outputs=[char_dropdown])
-      save_conf.click(self.save_config_role, inputs=input_list[2:6] + [max_token])
+      save_conf.click(self.save_config_role, inputs=input_list[2:6])
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
@@ -241,11 +219,6 @@ class UI:
       save_char_btn.click(self.save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.clear_last, inputs=[chatbot], outputs=[chatbot, message])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message])
-
-      with gr.Tab('调试'):
-        test_area = gr.TextArea(placeholder='输出结果', label='输出')
-        test_btn = gr.Button('查看token')
-      test_btn.click(self.chat_model.get_test_data, outputs=[test_area])
 
       with gr.Tab('冒险'):
         with gr.Row():
@@ -273,72 +246,32 @@ class UI:
           temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
           presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
           frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
-          max_token_adv = gr.Slider(minimum=1024, maximum=8192, step=1, label='最大token数量')
         with gr.Row():
           save_conf_adv = gr.Button('保存设置')
-      adv_input_list = [message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, adv_detail, max_token_adv]
+      adv_input_list = [message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, adv_detail]
       adv_output_list = [message_adv, chatbot_adv]
       adv_interactive_list = [message_adv, submit_adv, regen_adv, delete_adv]
       load_adv_btn.click(self.load_adv_story, inputs=adv_input_list[1:], outputs=[chatbot_adv] + adv_interactive_list)
-      message_adv.submit(self.adv_model.on_message_adv, inputs=adv_input_list[:-2] + [max_token_adv], outputs=adv_output_list)
-      submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-2] + [max_token_adv], outputs=adv_output_list)
-      regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-2] + [max_token_adv], outputs=[chatbot_adv])
+      message_adv.submit(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
+      submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
+      regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-1], outputs=[chatbot_adv])
       delete_adv.click(self.adv_model.reset_adv, outputs=adv_output_list)
-      save_conf_adv.click(self.save_config_adv, inputs=adv_input_list[2:6] + [max_token_adv])
+      save_conf_adv.click(self.save_config_adv, inputs=adv_input_list[2:6])
       adv_dropdown.change(self.change_adv, inputs=[adv_dropdown], outputs=[adv_title, adv_detail])
       refresh_adv_btn.click(self.refresh_adv, outputs=[adv_dropdown])
       save_adv_btn.click(self.save_adv, inputs=[adv_title, adv_detail], outputs=[adv_dropdown])
-
-      with gr.Tab('对话'):
-        with gr.Row():
-          with gr.Column(scale=3):
-            chatbot_con = gr.Chatbot(show_label=False).style(height=380)
-            message_con = gr.Textbox(placeholder='随便聊聊', show_label=False, interactive=False)
-            with gr.Row():
-              with gr.Column(min_width=100):
-                submit_con = gr.Button('提交', interactive=False)
-              with gr.Column(min_width=100):
-                regen_con = gr.Button('重新生成', interactive=False)
-              with gr.Column(min_width=100):
-                init_con_btn = gr.Button('开启对话')
-              with gr.Column(min_width=100):
-                clear_con = gr.Button('清空对话', interactive=False)
-        with gr.Row():
-          top_p_con = gr.Slider(minimum=0, maximum=1.0, step=0.01, value=0.6, label='Top P')
-          temperature_con = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
-          presence_penalty_con = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
-          frequency_penalty_con = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
-          max_token_con = gr.Slider(minimum=1024, maximum=8192, step=1, label='最大token数量')
-        with gr.Row():
-          save_conf_con = gr.Button('保存设置')
-      con_input_list = [message_con, chatbot_con, top_p_con, temperature_con, presence_penalty_con, frequency_penalty_con, max_token_con]
-      con_output_list = [message_con, chatbot_con]
-      con_interactive_list = [message_con, submit_con, regen_con, clear_con]
-      init_con_btn.click(self.init_conversation, outputs=con_interactive_list)
-      message_con.submit(self.con_model.on_message_con, inputs=con_input_list, outputs=con_output_list)
-      submit_con.click(self.con_model.on_message_con, inputs=con_input_list, outputs=con_output_list)
-      regen_con.click(self.con_model.regen_msg_con, inputs=con_input_list[1:], outputs=[chatbot_con])
-      clear_con.click(self.con_model.reset_con, outputs=con_output_list)
-      save_conf_con.click(self.save_config_con, inputs=con_input_list[2:6] + [max_token_con])
 
       reload_list = [
         top_p, 
         temperature, 
         presence_penalty, 
         frequency_penalty, 
-        max_token,
         char_dropdown, 
         top_p_adv, 
         temperature_adv, 
         presence_penalty_adv, 
         frequency_penalty_adv, 
-        max_token_adv,
-        adv_dropdown,
-        top_p_con, 
-        temperature_con, 
-        presence_penalty_con, 
-        frequency_penalty_con,
-        max_token_con
+        adv_dropdown
       ]
       app.load(self.init_ui, outputs=reload_list)
 
