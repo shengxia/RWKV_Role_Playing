@@ -103,11 +103,6 @@ class ModelUtils:
           break
       if stop_flag:
         break
-      # if '\n\n' in send_msg:
-      #   send_msg = send_msg.strip()
-      #   break
-    if len(model_tokens) > 1000:
-      model_tokens = model_tokens[len(model_tokens) - 1000:]
     return send_msg, out, model_tokens, model_state
   
   def get_default_prompt(self, background_adv = '', user='', bot=''):
