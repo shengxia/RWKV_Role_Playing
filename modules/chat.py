@@ -138,7 +138,7 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       output += f"""
-        <div class="message">
+        <div class="message_c">
           <div class="circle-bot">
             {img_bot}
           </div>
@@ -154,7 +154,7 @@ class Chat:
       """
       if row[0] != None:  # don't display empty user messages
         output += f"""
-          <div class="message">
+          <div class="message_c">
             <div class="circle-you">
               {img_me}
             </div>

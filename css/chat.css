@@ -11,7 +11,7 @@
   overflow-wrap: anywhere;
 }
 
-.message {
+.message_c {
   display: grid;
   grid-template-columns: 60px minmax(0, 1fr);
   padding-bottom: 25px;
