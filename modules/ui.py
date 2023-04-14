@@ -33,6 +33,16 @@ class UI:
   def update_chars_list(self):
     char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
+  
+  def save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty, max_token):
+    config = {
+      'top_p': top_p, 
+      'temperature': temperature, 
+      'presence': presence_penalty, 
+      'frequency': frequency_penalty,
+      'max_token': max_token
+    }
+    json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
   def save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
@@ -45,9 +55,9 @@ class UI:
       self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
   
   # 保存角色
-  def save_char(self, user='', bot='', greeting='', bot_persona='', scenario='', example_dialogue=''):
+  def save_char(self, user='', bot='', greeting='', bot_persona=''):
     with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
-      json.dump({'user': user, 'bot': bot, 'greeting': greeting, 'bot_persona': bot_persona, 'scenario': scenario, 'example_dialogue': example_dialogue}, f, indent=2, ensure_ascii=False)
+      json.dump({'user': user, 'bot': bot, 'greeting': greeting, 'bot_persona': bot_persona}, f, indent=2, ensure_ascii=False)
     char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
 
@@ -57,15 +67,13 @@ class UI:
       raise gr.Error("请选择一个角色")
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'], char['scenario'], char['example_dialogue'])
+    self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'])
     chatbot = [[None, char['greeting']]]
     return_arr = (
       char['user'], 
       char['bot'], 
       char['greeting'], 
-      char['bot_persona'], 
-      char['scenario'], 
-      char['example_dialogue'], 
+      char['bot_persona'],
       chatbot, 
       gr.Textbox.update(interactive=True), 
       gr.Button.update(interactive=True), 
@@ -128,9 +136,9 @@ class UI:
 
   # 初始化UI
   def init_ui(self):
-    with open('config.json', 'r', encoding='utf-8') as f:
+    with open(self.config_role_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
-    with open('config_adv.json', 'r', encoding='utf-8') as f:
+    with open(self.config_adv_path, 'r', encoding='utf-8') as f:
       configs_adv = json.loads(f.read())
     char_list = self.get_json_files(self.char_path)
     adv_list = self.get_json_files(self.adv_path)
@@ -151,9 +159,9 @@ class UI:
   # 创建UI
   def create_ui(self):
     with gr.Blocks(title="RWKV角色扮演") as app:
-      if not os.path.isfile('config.json'):
-        self.save_config()
-      if not os.path.isfile('config_adv.json'):
+      if not os.path.isfile(self.config_role_path):
+        self.save_config_role()
+      if not os.path.isfile(self.config_adv_path):
         self.save_config_adv()
 
       with gr.Tab("聊天"):
@@ -194,16 +202,11 @@ class UI:
             greeting = gr.Textbox(placeholder='开场白', label='开场白')
           with gr.Column():
             bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格', lines=10)
-        with gr.Row():
-          with gr.Column():
-            scenario = gr.TextArea(placeholder='对话发生在什么背景下', label='背景故事', lines=10)
-          with gr.Column():
-            example_dialogue = gr.TextArea(placeholder='示例对话', label='示例对话', lines=10)
         save_char_btn = gr.Button('保存角色')
       
       input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
       output_list = [message, chatbot]
-      char_input_list = [user, bot, greeting, bot_persona, scenario, example_dialogue, chatbot]
+      char_input_list = [user, bot, greeting, bot_persona, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
@@ -211,7 +214,7 @@ class UI:
       save_conf.click(self.save_config_role, inputs=input_list[2:6])
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
-      regen.click(self.chat_model.regen_msg, inputs=input_list[1:8], outputs=output_list)
+      regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
       delete.click(self.chat_model.reset_bot, inputs=[greeting], outputs=output_list)
       save_char_btn.click(self.save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.clear_last, inputs=[chatbot], outputs=[chatbot, message])

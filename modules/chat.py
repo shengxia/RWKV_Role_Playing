@@ -11,7 +11,7 @@ class Chat:
   def __init__(self, model_utils:ModelUtils):
     self.model_utils = model_utils
 
-  def load_init_prompt(self, user, bot, greeting, bot_persona, scenario, example_dialogue):
+  def load_init_prompt(self, user, bot, greeting, bot_persona):
     self.log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
     model_tokens = []
     model_state = None
