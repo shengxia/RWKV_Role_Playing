@@ -67,8 +67,7 @@ class UI:
       raise gr.Error("请选择一个角色")
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'])
-    chatbot = [[None, char['greeting']]]
+    chatbot = self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'])
     return_arr = (
       char['user'], 
       char['bot'], 
@@ -215,7 +214,7 @@ class UI:
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
-      delete.click(self.chat_model.reset_bot, inputs=[greeting], outputs=output_list)
+      delete.click(self.chat_model.reset_bot, inputs=[greeting, bot], outputs=output_list)
       save_char_btn.click(self.save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.clear_last, inputs=[chatbot], outputs=[chatbot, message])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message])

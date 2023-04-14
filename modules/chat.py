@@ -1,6 +1,7 @@
 from modules.model_utils import ModelUtils
 import os, gc, json, datetime
 import torch
+import pickle
 
 class Chat:
   
@@ -29,15 +30,24 @@ class Chat:
     init_prompt = init_prompt.replace('\n\n', '\n')
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
-    self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
+    chatbot = [[None, greeting]]
+    if os.path.exists(f'save/{bot}.sav'):
+      data = self.load_chat(bot)
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', data['out'], data['model_tokens'], data['model_state'])
+      chatbot = data['chatbot']
+    else:
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     gc.collect()
     torch.cuda.empty_cache()
+    return chatbot
   
-  def reset_bot(self, greeting):
+  def reset_bot(self, greeting, bot):
     self.log_name = f'{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
     out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
-    return None, [[None, greeting]]
+    chatbot = [[None, greeting]]
+    self.save_chat(chatbot, bot)
+    return None, chatbot
   
   def regen_msg(self, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot):
     try:
@@ -60,6 +70,7 @@ class Chat:
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     chatbot[-1][1] = new_reply.replace('\n', '')
     self.save_log(chatbot)
+    self.save_chat(chatbot, bot)
     return '', chatbot
 
   def save_log(self, chatbot):
@@ -72,4 +83,21 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, user, bot)
     return new_prompt.replace('\n', '')
+  
+  def save_chat(self, chatbot, bot):
+    os.makedirs('save', exist_ok=True)
+    out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+    data = {
+      "out": out,
+      "model_tokens": model_tokens,
+      "model_state": model_state,
+      "chatbot": chatbot
+    }
+    with open(f'save/{bot}.sav', 'wb') as f:
+      pickle.dump(data, f)
+
+  def load_chat(self, bot):
+    with open(f'save/{bot}.sav', 'rb') as f:
+      data = pickle.load(f)
+    return data
   
