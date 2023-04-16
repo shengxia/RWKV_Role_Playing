@@ -202,7 +202,7 @@ class UI:
 
       load_char_btn.click(self.load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.update_chars_list, outputs=[char_dropdown])
-      save_conf.click(self.save_config_role, inputs=input_list[2:6])
+      save_conf.click(self.save_config_role, inputs=input_list[1:5])
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
