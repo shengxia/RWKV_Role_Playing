@@ -1,7 +1,13 @@
 {
   "top_p": 0.6,
+<<<<<<< HEAD
   "temperature": 1.5,
   "presence": 0.2,
   "frequency": 0.8,
   "max_token": 2048
+=======
+  "temperature": 1.8,
+  "presence": 1,
+  "frequency": 1
+>>>>>>> github/dev
 }

@@ -17,7 +17,7 @@ class ModelUtils:
   END_OF_TEXT = 0
   END_OF_LINE = 187
   CHAT_LEN_SHORT = 40
-  CHAT_LEN_LONG = 150
+  CHAT_LEN_LONG = 300
   all_state = {}
   user = "Bob"
   bot = "Alice"
@@ -94,7 +94,7 @@ class ModelUtils:
         out_last = begin + i + 1
     
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      stop_text = (f'{user}：', f'{user}:', f'{bot}：', f'{bot}:')
+      stop_text = (f'{user}:', f'{bot}:')
       stop_flag = False
       for st in stop_text:
         if send_msg.endswith(st):
@@ -105,25 +105,3 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def get_default_prompt(self, background_adv = '', user='', bot=''):
-    if not user:
-      user = self.user
-    if not bot:
-      bot = self.bot
-    init_prompt = f'''
-    The following is a coherent verbose detailed conversation between a Chinese girl named {bot} and her friend {user}. \
-    {bot} is very intelligent, creative and friendly. \
-    {bot} likes to tell {user} a lot about herself and her opinions. \
-    {bot} usually gives {user} kind, helpful and informative advices.
-    {user}: lhc
-    {bot}: LHC是指大型强子对撞机（Large Hadron Collider），是世界最大最强的粒子加速器，由欧洲核子中心（CERN）在瑞士日内瓦地下建造。LHC的原理是加速质子（氢离子）并让它们相撞，让科学家研究基本粒子和它们之间的相互作用，并在2012年证实了希格斯玻色子的存在。
-    {user}: 企鹅会飞吗
-    {bot}: 企鹅是不会飞的。企鹅的翅膀短而扁平，更像是游泳时的一对桨。企鹅的身体结构和羽毛密度也更适合在水中游泳，而不是飞行。
-    '''
-    if background_adv:
-      init_prompt = init_prompt + f'\n{user}: ' + background_adv
-    init_prompt = init_prompt.strip().split('\n')
-    for c in range(len(init_prompt)):
-      init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-    init_prompt = '\n' + ('\n'.join(init_prompt)).strip() + f"\n{bot}: "
-    return init_prompt

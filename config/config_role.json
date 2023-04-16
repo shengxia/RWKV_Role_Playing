@@ -1,7 +1,6 @@
 {
   "top_p": 0.5,
   "temperature": 1.5,
-  "presence": 0.2,
-  "frequency": 0.8,
-  "max_token": 2048
+  "presence": 0.5,
+  "frequency": 0.5
 }

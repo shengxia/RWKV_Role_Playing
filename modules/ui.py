@@ -34,13 +34,12 @@ class UI:
     char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
   
-  def save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty, max_token):
+  def save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty):
     config = {
       'top_p': top_p, 
       'temperature': temperature, 
       'presence': presence_penalty, 
-      'frequency': frequency_penalty,
-      'max_token': max_token
+      'frequency': frequency_penalty
     }
     json.dump(config, f, indent=2)
 
@@ -67,8 +66,7 @@ class UI:
       raise gr.Error("请选择一个角色")
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'])
-    chatbot = [[None, char['greeting']]]
+    chatbot = self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'])
     return_arr = (
       char['user'], 
       char['bot'], 
@@ -83,14 +81,6 @@ class UI:
       gr.Button.update(interactive=True)
     )
     return return_arr
-
-  # 对话模式中，删除上一次的发言
-  def clear_last(self, chatbot):
-    message = chatbot[-1][0]
-    if(len(chatbot) < 2):
-      return chatbot, message
-    chatbot = chatbot[0:-1]
-    return chatbot, message
   
   def load_adv_story(self, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
     flag = False
@@ -167,7 +157,8 @@ class UI:
       with gr.Tab("聊天"):
         with gr.Row():
           with gr.Column(scale=3):
-            chatbot = gr.Chatbot(show_label=False).style(height=380)
+            # chatbot = gr.Chatbot(show_label=False).style(height=380)
+            chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
             message = gr.Textbox(placeholder='说些什么吧', show_label=False, interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
@@ -204,21 +195,21 @@ class UI:
             bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格', lines=10)
         save_char_btn = gr.Button('保存角色')
       
-      input_list = [message, chatbot, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
+      input_list = [message, top_p, temperature, presence_penalty, frequency_penalty, user, bot]
       output_list = [message, chatbot]
       char_input_list = [user, bot, greeting, bot_persona, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.update_chars_list, outputs=[char_dropdown])
-      save_conf.click(self.save_config_role, inputs=input_list[2:6])
+      save_conf.click(self.save_config_role, inputs=input_list[1:5])
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
-      delete.click(self.chat_model.reset_bot, inputs=[greeting], outputs=output_list)
+      delete.click(self.chat_model.reset_bot, inputs=[greeting, user, bot], outputs=output_list)
       save_char_btn.click(self.save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
-      clear_last_btn.click(self.clear_last, inputs=[chatbot], outputs=[chatbot, message])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message])
+      clear_last_btn.click(self.chat_model.clear_last, inputs=[user, bot], outputs=[chatbot, message])
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message])
 
       with gr.Tab('冒险'):
         with gr.Row():

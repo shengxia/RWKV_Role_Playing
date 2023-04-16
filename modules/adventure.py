@@ -12,7 +12,7 @@ class Adventure:
   def load_background(self, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
     model_tokens = []
     model_state = None
-    init_prompt = self.model_utils.get_default_prompt(background_adv)
+    init_prompt = f"{self.model_utils.user}:{background_adv}\n{self.model_utils.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_init', out, model_tokens, model_state)
     new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature_adv, top_p_adv, presence_penalty_adv, frequency_penalty_adv)
