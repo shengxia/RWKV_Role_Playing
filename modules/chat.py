@@ -126,8 +126,8 @@ class Chat:
   def generate_cai_chat_html(self, user, bot):
     output = f'<style>{self.chat_css}</style><div class="chat" id="chat">'
 
-    img_bot = f'<img src="file/cache/pfp_character.png?{bot}">' if Path("cache/pfp_character.png").exists() else ''
-    img_me = f'<img src="file/cache/pfp_me.png">' if Path("cache/pfp_me.png").exists() else ''
+    img_bot = f'<img src="file/chars/{bot}.png">' if Path(f"chars/{bot}.png").exists() else ''
+    img_me = f'<img src="file/chars/me.png">' if Path(f"chars/me.png").exists() else ''
 
     chatbot = copy.deepcopy(self.chatbot)
     chatbot.reverse()
