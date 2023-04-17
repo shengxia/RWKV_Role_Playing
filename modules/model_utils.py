@@ -12,11 +12,6 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  AVOID_REPEAT_TOKENS = []
-  CHUNK_LEN = 256
-  END_OF_TEXT = 0
-  END_OF_LINE = 187
-  CHAT_LEN_SHORT = 40
   CHAT_LEN_LONG = 300
   all_state = {}
   user = "Bob"
@@ -29,21 +24,11 @@ class ModelUtils:
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
     self.pipeline = PIPELINE(self.model, f"./20B_tokenizer.json")
-    AVOID_REPEAT = '，：？！'
-    for i in AVOID_REPEAT:
-      dd = self.pipeline.encode(i)
-      assert len(dd) == 1
-      self.AVOID_REPEAT_TOKENS += dd
 
-  def run_rnn(self, model_tokens, model_state, tokens, newline_adj = 0):
+  def run_rnn(self, model_tokens, model_state, tokens):
     tokens = [int(x) for x in tokens]
     model_tokens += tokens
-    while len(tokens) > 0:
-      out, model_state = self.model.forward(tokens[:self.CHUNK_LEN], model_state)
-      tokens = tokens[self.CHUNK_LEN:]
-    out[self.END_OF_LINE] += newline_adj # adjust \n probability
-    if model_tokens[-1] in self.AVOID_REPEAT_TOKENS:
-      out[model_tokens[-1]] = -999999999
+    out, model_state = self.model.forward(tokens, model_state)
     return out, model_tokens, model_state
   
   def save_all_stat(self, srv, name, last_out, model_tokens, model_state):
@@ -59,7 +44,7 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
-  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot='', reply_owner='bot'):
+  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, x_top_k, presence_penalty, frequency_penalty, user='', bot='', reply_owner='bot'):
     if not user:
       user = self.user
     if not bot:
@@ -69,30 +54,18 @@ class ModelUtils:
     out_last = begin
     occurrence = {}
     for i in range(self.CHAT_LEN_LONG):
-      if i <= 0:
-        newline_adj = -999999999
-      elif i <= self.CHAT_LEN_SHORT:
-        newline_adj = (i - self.CHAT_LEN_SHORT) / 10
-      elif i <= self.CHAT_LEN_LONG:
-        newline_adj = 0
-      else:
-        newline_adj = (i - self.CHAT_LEN_LONG) * 0.25 # MUST END THE GENERATION
       for n in occurrence:
         out[n] -= (presence_penalty + occurrence[n] * frequency_penalty)
-      token = self.pipeline.sample_logits(out, temperature=x_temp, top_p=x_top_p)
+      token = self.pipeline.sample_logits(out, temperature=x_temp, top_p=x_top_p, top_k=x_top_k)
       if token not in occurrence:
         occurrence[token] = 1
       else:
         occurrence[token] += 1
-      
-      out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token], newline_adj=newline_adj)
-      out[self.END_OF_TEXT] = -999999999  # disable <|endoftext|>
-
+      out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         new_reply += xxx
         out_last = begin + i + 1
-    
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if reply_owner == 'bot':
         if send_msg.endswith(f'{user}:'):

@@ -34,9 +34,10 @@ class UI:
     char_list = self.get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
   
-  def save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty):
+  def save_config(self, f, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     config = {
       'top_p': top_p, 
+      'top_k': top_k, 
       'temperature': temperature, 
       'presence': presence_penalty, 
       'frequency': frequency_penalty
@@ -44,14 +45,14 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
+  def save_config_role(self, top_p=0.7, top_k=0, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
+      self.save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty)
     
   # 保存冒险模式的配置
-  def save_config_adv(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
+  def save_config_adv(self, top_p=0.7, top_k=0, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open(self.config_adv_path, 'w', encoding='utf8') as f:
-      self.save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
+      self.save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty)
   
   # 保存角色
   def save_char(self, user='', bot='', greeting='', bot_persona=''):
@@ -82,11 +83,11 @@ class UI:
     )
     return return_arr
   
-  def load_adv_story(self, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
+  def load_adv_story(self, chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
     flag = False
     if background_adv:
       flag = True
-      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
+      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
     return_arr = (
       chatbot_adv,
       gr.Textbox.update(interactive=flag),
@@ -134,11 +135,13 @@ class UI:
     adv_list = self.get_json_files(self.adv_path)
     return_arr = (
       configs_role['top_p'], 
+      configs_role['top_k'], 
       configs_role['temperature'], 
       configs_role['presence'], 
       configs_role['frequency'], 
       gr.Dropdown.update(choices=char_list), 
       configs_adv['top_p'], 
+      configs_adv['top_k'], 
       configs_adv['temperature'], 
       configs_adv['presence'], 
       configs_adv['frequency'],
@@ -157,7 +160,6 @@ class UI:
       with gr.Tab("聊天"):
         with gr.Row():
           with gr.Column(scale=3):
-            # chatbot = gr.Chatbot(show_label=False).style(height=380)
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
             message = gr.Textbox(placeholder='说些什么吧', show_label=False, interactive=False)
             with gr.Row():
@@ -180,6 +182,7 @@ class UI:
               with gr.Column(min_width=100):
                 load_char_btn = gr.Button("载入角色")
             top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+            top_k = gr.Slider(minimum=0, maximum=200, step=1, label='Top K')
             temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
             presence_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Presence Penalty')
             frequency_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
@@ -195,7 +198,7 @@ class UI:
             bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格', lines=10)
         save_char_btn = gr.Button('保存角色')
       
-      input_list = [message, top_p, temperature, presence_penalty, frequency_penalty]
+      input_list = [message, top_p, top_k, temperature, presence_penalty, frequency_penalty]
       output_list = [message, chatbot]
       char_input_list = [user, bot, greeting, bot_persona, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -232,14 +235,13 @@ class UI:
                 load_adv_btn = gr.Button('开始冒险')
               with gr.Column(min_width=100):
                 save_adv_btn = gr.Button('保存故事')
-        with gr.Row():
-          top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, value=0.6, label='Top P')
-          temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, value=1, label='Temperature')
-          presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Presence Penalty')
-          frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, value=0.5, label='Frequency Penalty')
-        with gr.Row():
-          save_conf_adv = gr.Button('保存设置')
-      adv_input_list = [message_adv, chatbot_adv, top_p_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, adv_detail]
+        top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+        top_k_adv = gr.Slider(minimum=0, maximum=200, step=1, label='Top K')
+        temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
+        presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, label='Presence Penalty')
+        frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
+        save_conf_adv = gr.Button('保存设置')
+      adv_input_list = [message_adv, chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, adv_detail]
       adv_output_list = [message_adv, chatbot_adv]
       adv_interactive_list = [message_adv, submit_adv, regen_adv, delete_adv]
       load_adv_btn.click(self.load_adv_story, inputs=adv_input_list[1:], outputs=[chatbot_adv] + adv_interactive_list)
@@ -247,18 +249,20 @@ class UI:
       submit_adv.click(self.adv_model.on_message_adv, inputs=adv_input_list[:-1], outputs=adv_output_list)
       regen_adv.click(self.adv_model.regen_msg_adv, inputs=adv_input_list[1:-1], outputs=[chatbot_adv])
       delete_adv.click(self.adv_model.reset_adv, outputs=adv_output_list)
-      save_conf_adv.click(self.save_config_adv, inputs=adv_input_list[2:6])
+      save_conf_adv.click(self.save_config_adv, inputs=adv_input_list[2:-1])
       adv_dropdown.change(self.change_adv, inputs=[adv_dropdown], outputs=[adv_title, adv_detail])
       refresh_adv_btn.click(self.refresh_adv, outputs=[adv_dropdown])
       save_adv_btn.click(self.save_adv, inputs=[adv_title, adv_detail], outputs=[adv_dropdown])
 
       reload_list = [
         top_p, 
+        top_k, 
         temperature, 
         presence_penalty, 
         frequency_penalty, 
         char_dropdown, 
         top_p_adv, 
+        top_k_adv, 
         temperature_adv, 
         presence_penalty_adv, 
         frequency_penalty_adv, 

@@ -62,24 +62,24 @@ class Chat:
       os.remove(save_file)
     return None, self.generate_cai_chat_html()
   
-  def regen_msg(self, top_p, temperature, presence_penalty, frequency_penalty):
+  def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
     except:
       return '', self.chatbot
-    return self.gen_msg(out, top_p, temperature, presence_penalty, frequency_penalty, model_tokens, model_state)
+    return self.gen_msg(out, top_p, top_k, temperature, presence_penalty, frequency_penalty, model_tokens, model_state)
   
-  def on_message(self, message, top_p, temperature, presence_penalty, frequency_penalty):
+  def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     msg = message.replace('\\n','\n').strip()
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     new = f"{msg}\n{self.bot}:"
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new), newline_adj=-999999999)
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     self.chatbot += [[msg, None]]
-    return self.gen_msg(out, top_p, temperature, presence_penalty, frequency_penalty, model_tokens, model_state) 
+    return self.gen_msg(out, top_p, top_k, temperature, presence_penalty, frequency_penalty, model_tokens, model_state) 
   
-  def gen_msg(self, out, top_p, temperature, presence_penalty, frequency_penalty, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, self.user, self.bot, 'bot')
+  def gen_msg(self, out, top_p, top_k, temperature, presence_penalty, frequency_penalty, model_tokens, model_state):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, top_k, presence_penalty, frequency_penalty, self.user, self.bot, 'bot')
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.chatbot[-1][1] = new_reply
     self.save_log()
@@ -92,9 +92,9 @@ class Chat:
     with open(f'log/{self.log_name}', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
-  def get_prompt(self, top_p, temperature, presence_penalty, frequency_penalty):
+  def get_prompt(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, self.user, self.bot, 'user')
+    new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, top_k, presence_penalty, frequency_penalty, self.user, self.bot, 'user')
     return new_prompt[0]
   
   def clear_last(self):
@@ -149,7 +149,7 @@ class Chat:
           </div>
         </div>
       """
-      if row[0] != None:  # don't display empty user messages
+      if row[0] != None:
         row[0] = row[0].replace('\n', '<br/>')
         output += f"""
           <div class="message_c">
