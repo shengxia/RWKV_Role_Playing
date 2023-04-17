@@ -79,7 +79,7 @@ class Chat:
     return self.gen_msg(out, top_p, temperature, presence_penalty, frequency_penalty, model_tokens, model_state) 
   
   def gen_msg(self, out, top_p, temperature, presence_penalty, frequency_penalty, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, self.user, self.bot)
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, self.user, self.bot, 'bot')
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.chatbot[-1][1] = new_reply
     self.save_log()
@@ -94,8 +94,8 @@ class Chat:
 
   def get_prompt(self, top_p, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, self.user, self.bot)
-    return new_prompt
+    new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, temperature, top_p, presence_penalty, frequency_penalty, self.user, self.bot, 'user')
+    return new_prompt[0]
   
   def clear_last(self):
     message = self.chatbot[-1][0]
