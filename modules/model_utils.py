@@ -59,7 +59,7 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
-  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot=''):
+  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot='', reply_owner='bot'):
     if not user:
       user = self.user
     if not bot:
@@ -68,7 +68,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    for i in range(999):
+    for i in range(self.CHAT_LEN_LONG):
       if i <= 0:
         newline_adj = -999999999
       elif i <= self.CHAT_LEN_SHORT:
@@ -94,14 +94,13 @@ class ModelUtils:
         out_last = begin + i + 1
     
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      stop_text = (f'{user}:', f'{bot}:')
-      stop_flag = False
-      for st in stop_text:
-        if send_msg.endswith(st):
-          send_msg = send_msg[:-len(st)].strip()
-          stop_flag = True
+      if reply_owner == 'bot':
+        if send_msg.endswith(f'{user}:'):
+          send_msg = send_msg[:-len(f'{user}:')].strip()
           break
-      if stop_flag:
-        break
+      if reply_owner == 'user':
+        if send_msg.endswith(f'{bot}:'):
+          send_msg = send_msg[:-len(f'{bot}:')].strip()
+          break
     return send_msg, out, model_tokens, model_state
   
