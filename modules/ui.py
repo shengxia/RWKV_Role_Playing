@@ -140,15 +140,15 @@ class UI:
     flag = False
     if background_adv:
       flag = True
-      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
-    return_arr = (
-      chatbot_adv,
-      gr.Textbox.update(interactive=flag),
-      gr.Button.update(interactive=flag),
-      gr.Button.update(interactive=flag),
-      gr.Button.update(interactive=flag)
-    )
-    return return_arr
+      for chatbot_adv in self.adv_model.load_background(chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
+        return_arr = (
+          chatbot_adv,
+          gr.Textbox.update(interactive=flag),
+          gr.Button.update(interactive=flag),
+          gr.Button.update(interactive=flag),
+          gr.Button.update(interactive=flag)
+        )
+        yield return_arr
     
   def __change_adv(self, adv_dropdown):
     if not adv_dropdown:
@@ -263,7 +263,7 @@ class UI:
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list, show_progress=False)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message])
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message], show_progress=False)
       unlock_btn.click(self.__unlock_role_param, outputs=input_list[1:] + [unlock_btn])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])

@@ -15,13 +15,14 @@ class Adventure:
     init_prompt = f"{self.model_utils.user}:{background}\n{self.model_utils.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_init', out, model_tokens, model_state)
+    self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
-    self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     gc.collect()
     torch.cuda.empty_cache()
-    chatbot = [[None, new_reply.replace('\n', '')]]
-    return chatbot
+    for new_reply, out, model_tokens, model_state in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv'):
+      chatbot = [[None, new_reply.replace('\n', '')]]
+      yield chatbot
+    self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
   
   def on_message_adv(self, message, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     new = f" {message}\n{self.model_utils.bot}: "
@@ -30,10 +31,10 @@ class Adventure:
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
+    for new_reply, out, model_tokens, model_state in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv'):
+      chatbot[-1][1] = new_reply.replace('\n', '')
+      yield '', chatbot
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
-    chatbot[-1][1] = new_reply.replace('\n', '')
-    return '', chatbot
 
   def regen_msg_adv(self, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     try:
@@ -41,10 +42,10 @@ class Adventure:
     except:
       return chatbot
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
+    for new_reply, out, model_tokens, model_state in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv'):
+      chatbot[-1][1] = new_reply.replace('\n', '')
+      yield chatbot
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
-    chatbot[-1][1] = new_reply.replace('\n', '')
-    return chatbot
 
   def reset_adv(self):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_adv, 'adv_init')

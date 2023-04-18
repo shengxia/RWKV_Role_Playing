@@ -93,8 +93,8 @@ class Chat:
   def get_prompt(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'user')
-    return new_prompt[0]
+    for new_prompt in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'user'):
+      yield new_prompt[0]
   
   def clear_last(self):
     if(len(self.chatbot) < 2):
