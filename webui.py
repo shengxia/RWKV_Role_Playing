@@ -6,6 +6,7 @@ parser.add_argument("--strategy", type=str, default="cuda fp16i8")
 parser.add_argument("--listen", action='store_true', help="launch gradio with 0.0.0.0 as server name, allowing to respond to network requests")
 parser.add_argument("--cuda_on", type=str, default="0", help="RWKV_CUDA_ON value")
 parser.add_argument("--jit_on", type=str, default="1", help="RWKV_JIT_ON value")
+parser.add_argument("--share", action='store_true', help="use gradio share")
 cmd_opts = parser.parse_args()
 
 import os
@@ -24,5 +25,6 @@ if __name__ == "__main__":
   app = ui.create_ui()
   app.queue(concurrency_count=5, max_size=64).launch(
     server_name="0.0.0.0" if cmd_opts.listen else None, 
+    share=cmd_opts.share,
     server_port=cmd_opts.port
   )
