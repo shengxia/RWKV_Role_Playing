@@ -14,6 +14,8 @@ class UI:
   adv_path = './adventure'
   config_role_path = './config/config_role.json'
   config_adv_path = './config/config_adv.json'
+  lock_flag_role = True
+  lock_flag_adv = True
 
   def __init__(self, model_utils:ModelUtils):
     self.model_utils = model_utils
@@ -80,6 +82,57 @@ class UI:
       gr.Button.update(interactive=True), 
       gr.Button.update(interactive=True), 
       gr.Button.update(interactive=True)
+    )
+    return return_arr
+
+  def confirm_delete(self):
+    return_arr = (
+      gr.Button.update(visible=False),
+      gr.Button.update(visible=True),
+      gr.Button.update(visible=True)
+    )
+    return return_arr
+  
+  def confirm_cancel(self):
+    return_arr = (
+      gr.Button.update(visible=True),
+      gr.Button.update(visible=False),
+      gr.Button.update(visible=False)
+    )
+    return return_arr
+  
+  def unlock_role_param(self):
+    return_arr = self.unlock_param(self.lock_flag_role)
+    self.lock_flag_role = not self.lock_flag_role
+    return return_arr
+  
+  def unlock_adv_param(self):
+    return_arr = self.unlock_param(self.lock_flag_adv)
+    self.lock_flag_adv = not self.lock_flag_adv
+    return return_arr
+  
+  def reset_chatbot(self):
+    message, chatbot = self.chat_model.reset_bot()
+    return_arr = (
+      message,
+      chatbot,
+      gr.Button.update(visible=True),
+      gr.Button.update(visible=False),
+      gr.Button.update(visible=False)
+    )
+    return return_arr
+  
+  def unlock_param(self, flag):
+    text = '锁定'
+    if not flag:
+      text = '解锁'
+    return_arr = (
+      gr.Slider.update(interactive=flag), 
+      gr.Slider.update(interactive=flag), 
+      gr.Slider.update(interactive=flag), 
+      gr.Slider.update(interactive=flag), 
+      gr.Slider.update(interactive=flag), 
+      gr.Button.update(value=text)
     )
     return return_arr
   
@@ -173,6 +226,11 @@ class UI:
               with gr.Column(min_width=100):
                 clear_last_btn = gr.Button('清除上一条', interactive=False)
             delete = gr.Button('清空聊天', interactive=False)
+            with gr.Row():
+              with gr.Column(min_width=100):
+                clear_chat = gr.Button('清空', visible=False, elem_classes='warn_btn')
+              with gr.Column(min_width=100):
+                clear_cancel = gr.Button('取消', visible=False)
           with gr.Column(scale=1):
             with gr.Row():
               char_dropdown = gr.Dropdown(None, interactive=True, label="请选择角色")
@@ -181,12 +239,16 @@ class UI:
                 refresh_char_btn = gr.Button("刷新角色列表")
               with gr.Column(min_width=100):
                 load_char_btn = gr.Button("载入角色")
-            top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
-            top_k = gr.Slider(minimum=0, maximum=200, step=1, label='Top K')
-            temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
-            presence_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Presence Penalty')
-            frequency_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
-            save_conf = gr.Button('保存设置')
+            top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
+            top_k = gr.Slider(minimum=0, maximum=200, step=1, interactive=False, label='Top K')
+            temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
+            presence_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, interactive=False, label='Presence Penalty')
+            frequency_penalty = gr.Slider(minimum=0, maximum=1, step=0.01, interactive=False, label='Frequency Penalty')
+            with gr.Row():
+              with gr.Column(min_width=100):
+                unlock_btn = gr.Button('解锁')
+              with gr.Column(min_width=100):
+                save_conf = gr.Button('保存')
 
       with gr.Tab("角色"):
         with gr.Row():
@@ -209,10 +271,13 @@ class UI:
       message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
-      delete.click(self.chat_model.reset_bot, outputs=output_list)
       save_char_btn.click(self.save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message])
+      unlock_btn.click(self.unlock_role_param, outputs=input_list[1:] + [unlock_btn])
+      clear_chat.click(self.reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
+      delete.click(self.confirm_delete, outputs=[delete, clear_chat, clear_cancel])
+      clear_cancel.click(self.confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
 
       with gr.Tab('冒险'):
         with gr.Row():
@@ -235,12 +300,16 @@ class UI:
                 load_adv_btn = gr.Button('开始冒险')
               with gr.Column(min_width=100):
                 save_adv_btn = gr.Button('保存故事')
-        top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
-        top_k_adv = gr.Slider(minimum=0, maximum=200, step=1, label='Top K')
-        temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
-        presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, label='Presence Penalty')
-        frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, label='Frequency Penalty')
-        save_conf_adv = gr.Button('保存设置')
+        top_p_adv = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
+        top_k_adv = gr.Slider(minimum=0, maximum=200, step=1, interactive=False, label='Top K')
+        temperature_adv = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
+        presence_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, interactive=False, label='Presence Penalty')
+        frequency_penalty_adv = gr.Slider(minimum=0, maximum=1, step=0.01, interactive=False, label='Frequency Penalty')
+        with gr.Row():
+          with gr.Column(min_width=100):
+            unlock_btn_adv = gr.Button('解锁')
+          with gr.Column(min_width=100):
+            save_conf_adv = gr.Button('保存')
       adv_input_list = [message_adv, chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, adv_detail]
       adv_output_list = [message_adv, chatbot_adv]
       adv_interactive_list = [message_adv, submit_adv, regen_adv, delete_adv]
@@ -253,6 +322,7 @@ class UI:
       adv_dropdown.change(self.change_adv, inputs=[adv_dropdown], outputs=[adv_title, adv_detail])
       refresh_adv_btn.click(self.refresh_adv, outputs=[adv_dropdown])
       save_adv_btn.click(self.save_adv, inputs=[adv_title, adv_detail], outputs=[adv_dropdown])
+      unlock_btn_adv.click(self.unlock_adv_param, outputs=adv_input_list[2:-1] + [unlock_btn_adv])
 
       reload_list = [
         top_p, 

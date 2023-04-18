@@ -9,40 +9,42 @@ class Adventure:
   def __init__(self, model_utils:ModelUtils):
     self.model_utils = model_utils
 
-  def load_background(self, chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
+  def load_background(self, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty, background):
     model_tokens = []
     model_state = None
-    init_prompt = f"{self.model_utils.user}:{background_adv}\n{self.model_utils.bot}:"
+    init_prompt = f"{self.model_utils.user}:{background}\n{self.model_utils.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_init', out, model_tokens, model_state)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature_adv, top_p_adv, top_k_adv, presence_penalty_adv, frequency_penalty_adv)
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     gc.collect()
     torch.cuda.empty_cache()
-    chatbot_adv = [[None, new_reply.replace('\n', '')]]
-    return chatbot_adv
+    chatbot = [[None, new_reply.replace('\n', '')]]
+    return chatbot
   
-  def on_message_adv(self, message_adv, chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv):
-    msg = message_adv.replace('\\n','\n').strip()
-    new = f" {msg}\n{self.model_utils.bot}: "
-    chatbot_adv = chatbot_adv + [[msg, None]]
+  def on_message_adv(self, message, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+    new = f" {message}\n{self.model_utils.bot}: "
+    chatbot = chatbot + [[message, None]]
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_adv, 'adv')
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature_adv, top_p_adv, top_k_adv, presence_penalty_adv, frequency_penalty_adv)
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
-    chatbot_adv[-1][1] = new_reply.replace('\n', '')
-    return '', chatbot_adv
+    chatbot[-1][1] = new_reply.replace('\n', '')
+    return '', chatbot
 
-  def regen_msg_adv(self, chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv):
+  def regen_msg_adv(self, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_adv, 'adv_pre')
     except:
-      return chatbot_adv
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, temperature_adv, top_p_adv, top_k_adv, presence_penalty_adv, frequency_penalty_adv)
+      return chatbot
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
-    chatbot_adv[-1][1] = new_reply.replace('\n', '')
-    return chatbot_adv
+    chatbot[-1][1] = new_reply.replace('\n', '')
+    return chatbot
 
   def reset_adv(self):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_adv, 'adv_init')
