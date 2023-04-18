@@ -12,12 +12,7 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  AVOID_REPEAT_TOKENS = []
-  CHUNK_LEN = 256
-  END_OF_TEXT = 0
-  END_OF_LINE = 187
-  CHAT_LEN_SHORT = 40
-  CHAT_LEN_LONG = 300
+  CHAT_LEN_LONG = 500
   all_state = {}
   user = "Bob"
   bot = "Alice"
@@ -29,21 +24,11 @@ class ModelUtils:
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
     self.pipeline = PIPELINE(self.model, f"./20B_tokenizer.json")
-    AVOID_REPEAT = '，：？！'
-    for i in AVOID_REPEAT:
-      dd = self.pipeline.encode(i)
-      assert len(dd) == 1
-      self.AVOID_REPEAT_TOKENS += dd
 
-  def run_rnn(self, model_tokens, model_state, tokens, newline_adj = 0):
+  def run_rnn(self, model_tokens, model_state, tokens):
     tokens = [int(x) for x in tokens]
     model_tokens += tokens
-    while len(tokens) > 0:
-      out, model_state = self.model.forward(tokens[:self.CHUNK_LEN], model_state)
-      tokens = tokens[self.CHUNK_LEN:]
-    out[self.END_OF_LINE] += newline_adj # adjust \n probability
-    if model_tokens[-1] in self.AVOID_REPEAT_TOKENS:
-      out[model_tokens[-1]] = -999999999
+    out, model_state = self.model.forward(tokens, model_state)
     return out, model_tokens, model_state
   
   def save_all_stat(self, srv, name, last_out, model_tokens, model_state):
@@ -59,48 +44,72 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
-  def get_reply(self, model_tokens, model_state, out, x_temp, x_top_p, presence_penalty, frequency_penalty, user='', bot='', reply_owner='bot'):
+  def get_reply(self, model_tokens, model_state, out, chat_param, srv_pfx, user='', bot='', reply_owner='bot'):
     if not user:
       user = self.user
     if not bot:
       bot = self.bot
-    new_reply = ''
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
     for i in range(self.CHAT_LEN_LONG):
-      if i <= 0:
-        newline_adj = -999999999
-      elif i <= self.CHAT_LEN_SHORT:
-        newline_adj = (i - self.CHAT_LEN_SHORT) / 10
-      elif i <= self.CHAT_LEN_LONG:
-        newline_adj = 0
-      else:
-        newline_adj = (i - self.CHAT_LEN_LONG) * 0.25 # MUST END THE GENERATION
       for n in occurrence:
-        out[n] -= (presence_penalty + occurrence[n] * frequency_penalty)
-      token = self.pipeline.sample_logits(out, temperature=x_temp, top_p=x_top_p)
+        out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
+      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       if token not in occurrence:
         occurrence[token] = 1
       else:
         occurrence[token] += 1
-      
-      out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token], newline_adj=newline_adj)
-      out[self.END_OF_TEXT] = -999999999  # disable <|endoftext|>
-
+      out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
-        new_reply += xxx
         out_last = begin + i + 1
-    
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if reply_owner == 'bot':
         if send_msg.endswith(f'{user}:'):
           send_msg = send_msg[:-len(f'{user}:')].strip()
           break
+        if send_msg.endswith(f'{bot}:'):
+          semd_msg = send_msg[:-len(f'{bot}:')].strip()
+          if not send_msg.endswith('\n'):
+            retry_text = semd_msg + '\n'
+          retry_text = semd_msg + f'{user}:'
+          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
+          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
+          break
+        if send_msg.endswith('\n\n'):
+          semd_msg = send_msg[:-len('\n\n')].strip()
+          retry_text = semd_msg + f'\n{user}:'
+          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
+          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
+          break
       if reply_owner == 'user':
         if send_msg.endswith(f'{bot}:'):
           send_msg = send_msg[:-len(f'{bot}:')].strip()
           break
+        if send_msg.endswith(f'{user}:'):
+          semd_msg = send_msg[:-len(f'{user}:')].strip()
+          if not send_msg.endswith('\n'):
+            retry_text = semd_msg + '\n'
+          retry_text = send_msg + f'{bot}:'
+          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
+          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
+          break
+        if send_msg.endswith('\n\n'):
+          semd_msg = send_msg[:-len('\n\n')].strip()
+          retry_text = send_msg + f'\n{bot}:'
+          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
+          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
+          break
     return send_msg, out, model_tokens, model_state
+  
+  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+    chat_param = {
+      'top_p': top_p,
+      'top_k': top_k,
+      'temperature': temperature,
+      'presence_penalty': presence_penalty,
+      'frequency_penalty': frequency_penalty
+    }
+    return chat_param
   
