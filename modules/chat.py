@@ -68,7 +68,8 @@ class Chat:
     except:
       return '', self.chatbot
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    return self.gen_msg(out, chat_param, model_tokens, model_state)
+    for i in self.gen_msg(out, chat_param, model_tokens, model_state):
+      yield '', i 
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
@@ -77,15 +78,17 @@ class Chat:
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     self.chatbot += [[message, None]]
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    return self.gen_msg(out, chat_param, model_tokens, model_state) 
+    for i in self.gen_msg(out, chat_param, model_tokens, model_state):
+      yield '', i
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'bot')
+    for new_reply, out, model_tokens, model_state in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'bot'):
+      self.chatbot[-1][1] = new_reply
+      yield self.__generate_cai_chat_html()
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
-    self.chatbot[-1][1] = new_reply
     self.__save_log()
     self.__save_chat()
-    return '', self.__generate_cai_chat_html()
+    
 
   def get_prompt(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')

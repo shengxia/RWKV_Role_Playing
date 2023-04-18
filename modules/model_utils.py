@@ -101,7 +101,8 @@ class ModelUtils:
           out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
           out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
           break
-    return send_msg, out, model_tokens, model_state
+      yield send_msg, out, model_tokens, model_state
+    yield send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     chat_param = {
