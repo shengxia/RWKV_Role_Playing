@@ -68,8 +68,7 @@ class Chat:
     except:
       return '', self.chatbot
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    for i in self.gen_msg(out, chat_param, model_tokens, model_state):
-      yield '', i 
+    return '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
@@ -78,23 +77,21 @@ class Chat:
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     self.chatbot += [[message, None]]
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    for i in self.gen_msg(out, chat_param, model_tokens, model_state):
-      yield '', i
+    return '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
-    for new_reply, out, model_tokens, model_state in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'bot'):
-      self.chatbot[-1][1] = new_reply
-      yield self.__generate_cai_chat_html()
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'bot')
+    self.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.__save_log()
     self.__save_chat()
+    return self.__generate_cai_chat_html()
     
-
   def get_prompt(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    for new_prompt in self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'user'):
-      yield new_prompt[0]
+    new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'chat', self.user, self.bot, 'user')
+    return new_prompt[0]
   
   def clear_last(self):
     if(len(self.chatbot) < 2):

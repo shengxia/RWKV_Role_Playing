@@ -12,10 +12,11 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHAT_LEN_LONG = 500
+  CHAT_LEN_LONG = 300
   all_state = {}
   user = "Bob"
   bot = "Alice"
+  stop_flag = False
   
   def __init__(self, args):
     self.model_path = args.model
@@ -45,6 +46,7 @@ class ModelUtils:
     return self.all_state[n]['out'], model_tokens, model_state
   
   def get_reply(self, model_tokens, model_state, out, chat_param, srv_pfx, user='', bot='', reply_owner='bot'):
+    self.stop_flag = False
     if not user:
       user = self.user
     if not bot:
@@ -66,43 +68,16 @@ class ModelUtils:
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if reply_owner == 'bot':
-        if send_msg.endswith(f'{user}:'):
-          send_msg = send_msg[:-len(f'{user}:')].strip()
-          break
-        if send_msg.endswith(f'{bot}:'):
-          semd_msg = send_msg[:-len(f'{bot}:')].strip()
-          if not send_msg.endswith('\n'):
-            retry_text = semd_msg + '\n'
-          retry_text = semd_msg + f'{user}:'
-          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
-          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
-          break
-        if send_msg.endswith('\n\n'):
-          semd_msg = send_msg[:-len('\n\n')].strip()
-          retry_text = semd_msg + f'\n{user}:'
-          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
-          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
+        if send_msg.endswith(f'\n{user}:'):
+          send_msg = send_msg[:-len(f'\n{user}:')].strip()
           break
       if reply_owner == 'user':
-        if send_msg.endswith(f'{bot}:'):
-          send_msg = send_msg[:-len(f'{bot}:')].strip()
+        if send_msg.endswith(f'\n{bot}:'):
+          send_msg = send_msg[:-len(f'\n{bot}:')].strip()
           break
-        if send_msg.endswith(f'{user}:'):
-          semd_msg = send_msg[:-len(f'{user}:')].strip()
-          if not send_msg.endswith('\n'):
-            retry_text = semd_msg + '\n'
-          retry_text = send_msg + f'{bot}:'
-          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
-          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
-          break
-        if send_msg.endswith('\n\n'):
-          semd_msg = send_msg[:-len('\n\n')].strip()
-          retry_text = send_msg + f'\n{bot}:'
-          out, model_tokens, model_state = self.load_all_stat(f'{srv_pfx}_server', f'{srv_pfx}_pre')
-          out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, self.pipeline.encode(retry_text))
-          break
-      yield send_msg, out, model_tokens, model_state
-    yield send_msg, out, model_tokens, model_state
+      if self.stop_flag:
+        return send_msg, out, model_tokens, model_state
+    return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     chat_param = {

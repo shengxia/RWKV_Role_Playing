@@ -140,15 +140,15 @@ class UI:
     flag = False
     if background_adv:
       flag = True
-      for chatbot_adv in self.adv_model.load_background(chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv):
-        return_arr = (
-          chatbot_adv,
-          gr.Textbox.update(interactive=flag),
-          gr.Button.update(interactive=flag),
-          gr.Button.update(interactive=flag),
-          gr.Button.update(interactive=flag)
-        )
-        yield return_arr
+      chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
+      return_arr = (
+        chatbot_adv,
+        gr.Textbox.update(interactive=flag),
+        gr.Button.update(interactive=flag),
+        gr.Button.update(interactive=flag),
+        gr.Button.update(interactive=flag)
+      )
+      return return_arr
     
   def __change_adv(self, adv_dropdown):
     if not adv_dropdown:
@@ -207,7 +207,7 @@ class UI:
             message = gr.Textbox(placeholder='说些什么吧', show_label=False, interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
-                submit = gr.Button('提交', interactive=False)
+                submit = gr.Button('提交', interactive=False)       
               with gr.Column(min_width=100):
                 get_prompt_btn = gr.Button('提词', interactive=False)
             with gr.Row():
@@ -258,12 +258,12 @@ class UI:
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       save_conf.click(self.__save_config_role, inputs=input_list[1:])
-      message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list, show_progress=False)
-      submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list, show_progress=False)
-      regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list, show_progress=False)
+      message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
+      submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
+      regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message], show_progress=False)
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message])
       unlock_btn.click(self.__unlock_role_param, outputs=input_list[1:] + [unlock_btn])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
