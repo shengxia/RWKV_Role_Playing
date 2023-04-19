@@ -15,12 +15,13 @@ class Adventure:
     init_prompt = f"{self.model_utils.user}:{background}\n{self.model_utils.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_init', out, model_tokens, model_state)
+    self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
-    self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     gc.collect()
     torch.cuda.empty_cache()
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
     chatbot = [[None, new_reply.replace('\n', '')]]
+    self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     return chatbot
   
   def on_message_adv(self, message, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty):

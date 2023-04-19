@@ -141,14 +141,14 @@ class UI:
     if background_adv:
       flag = True
       chatbot_adv = self.adv_model.load_background(chatbot_adv, top_p_adv, top_k_adv, temperature_adv, presence_penalty_adv, frequency_penalty_adv, background_adv)
-    return_arr = (
-      chatbot_adv,
-      gr.Textbox.update(interactive=flag),
-      gr.Button.update(interactive=flag),
-      gr.Button.update(interactive=flag),
-      gr.Button.update(interactive=flag)
-    )
-    return return_arr
+      return_arr = (
+        chatbot_adv,
+        gr.Textbox.update(interactive=flag),
+        gr.Button.update(interactive=flag),
+        gr.Button.update(interactive=flag),
+        gr.Button.update(interactive=flag)
+      )
+      return return_arr
     
   def __change_adv(self, adv_dropdown):
     if not adv_dropdown:
@@ -207,7 +207,7 @@ class UI:
             message = gr.Textbox(placeholder='说些什么吧', show_label=False, interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
-                submit = gr.Button('提交', interactive=False)
+                submit = gr.Button('提交', interactive=False)       
               with gr.Column(min_width=100):
                 get_prompt_btn = gr.Button('提词', interactive=False)
             with gr.Row():
