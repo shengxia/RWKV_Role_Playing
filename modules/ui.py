@@ -269,6 +269,11 @@ class UI:
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
 
+      with gr.Tab('调试'):
+        test_area = gr.TextArea(placeholder='输出结果', label='输出')
+        test_btn = gr.Button('查看token')
+      test_btn.click(self.chat_model.get_test_data, outputs=[test_area])
+
       with gr.Tab('指令'):
         with gr.Row():
           with gr.Column(scale=3):
