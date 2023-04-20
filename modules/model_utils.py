@@ -16,7 +16,6 @@ class ModelUtils:
   all_state = {}
   user = "Bob"
   bot = "Alice"
-  stop_flag = False
   
   def __init__(self, args):
     self.model_path = args.model
@@ -45,12 +44,12 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, srv_pfx, user='', bot='', reply_owner='bot'):
-    self.stop_flag = False
+  def get_reply(self, model_tokens, model_state, out, chat_param, user='', bot='', reply_owner='bot'):
     if not user:
       user = self.user
     if not bot:
       bot = self.bot
+    stop_word = [f'{user}：', f'{bot}：', '#', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:']
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
@@ -71,12 +70,20 @@ class ModelUtils:
         if send_msg.endswith(f'\n{user}:'):
           send_msg = send_msg[:-len(f'\n{user}:')].strip()
           break
+        if send_msg.endswith(f'\n{bot}:'):
+          send_msg += '\n\n请重新生成'
+          break
       if reply_owner == 'user':
         if send_msg.endswith(f'\n{bot}:'):
           send_msg = send_msg[:-len(f'\n{bot}:')].strip()
           break
-      if self.stop_flag:
-        return send_msg, out, model_tokens, model_state
+        if send_msg.endswith(f'\n{user}:'):
+          send_msg += '\n\n请重新生成'
+          break
+      for s in stop_word:
+        if send_msg.endswith(s):
+          send_msg += '\n\n请重新生成'
+          return send_msg, out, model_tokens, model_state
     return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):

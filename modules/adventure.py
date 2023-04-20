@@ -19,7 +19,7 @@ class Adventure:
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
     gc.collect()
     torch.cuda.empty_cache()
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     chatbot = [[None, new_reply.replace('\n', '')]]
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     return chatbot
@@ -31,7 +31,7 @@ class Adventure:
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     chatbot[-1][1] = new_reply.replace('\n', '')
     return '', chatbot
@@ -42,7 +42,7 @@ class Adventure:
     except:
       return chatbot
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, 'adv')
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
     chatbot[-1][1] = new_reply.replace('\n', '')
     return chatbot
