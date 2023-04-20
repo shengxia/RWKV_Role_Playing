@@ -28,14 +28,14 @@ class Chat:
     self.bot = bot
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = f"{user}:你是{bot}，{bot_persona}，{bot}称呼我为{user}。\n"
+    init_prompt = f"{user}:你是{bot}，{bot_persona}{bot}称呼我为{user}。\n\n"
     if greeting:
-      init_prompt += f"{bot}:{greeting}\n{user}:"
+      init_prompt += f"{bot}:{greeting}\n\n{user}:"
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
     init_prompt = '\n'.join(init_prompt).strip()
-    init_prompt = init_prompt.replace('\n\n', '\n')
+    # init_prompt = init_prompt.replace('\n\n', '\n')
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
     if os.path.exists(f'save/{bot}.sav'):
@@ -69,7 +69,7 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
     except:
       return '', self.chatbot
-    new = f"{self.chatbot[-1][0]}\n{self.bot}:"
+    new = f"{self.chatbot[-1][0]}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
     return '', self.gen_msg(out, chat_param, model_tokens, model_state) 
@@ -77,7 +77,7 @@ class Chat:
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
-    new = f"{message}\n{self.bot}:"
+    new = f"{message}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.chatbot += [[message, None]]
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
@@ -190,10 +190,10 @@ class Chat:
   
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
-    for row in chatbot[:-1]:
-      chat_str += f'{self.user}:{row[0]}\n'
-      chat_str += f'{self.bot}:{row[1]}\n'
-    chat_str += f'{self.user}:{chatbot[-1][0]}\n{self.bot}:'
+    for row in chatbot:
+      chat_str += f'{self.user}:{row[0]}\n\n'
+      chat_str += f'{self.bot}:{row[1]}\n\n'
+    chat_str += f'{self.user}:'
     return chat_str
   
   def get_test_data(self):
