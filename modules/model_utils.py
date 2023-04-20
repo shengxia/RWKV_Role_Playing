@@ -67,17 +67,17 @@ class ModelUtils:
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if reply_owner == 'bot':
-        if send_msg.endswith(f'\n{user}:'):
-          send_msg = send_msg[:-len(f'\n{user}:')].strip()
+        if send_msg.endswith(f'\n\n{user}:'):
+          send_msg = send_msg[:-len(f'\n\n{user}:')].strip()
           break
-        if send_msg.endswith(f'\n{bot}:'):
+        if send_msg.endswith(f'\n\n{bot}:'):
           send_msg += '\n\n请重新生成'
           break
       if reply_owner == 'user':
-        if send_msg.endswith(f'\n{bot}:'):
-          send_msg = send_msg[:-len(f'\n{bot}:')].strip()
+        if send_msg.endswith(f'\n\n{bot}:'):
+          send_msg = send_msg[:-len(f'\n\n{bot}:')].strip()
           break
-        if send_msg.endswith(f'\n{user}:'):
+        if send_msg.endswith(f'\n\n{user}:'):
           send_msg += '\n\n请重新生成'
           break
       for s in stop_word:
