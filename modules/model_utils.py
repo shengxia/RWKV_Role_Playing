@@ -44,6 +44,10 @@ class ModelUtils:
     model_tokens = copy.deepcopy(self.all_state[n]['token'])
     return self.all_state[n]['out'], model_tokens, model_state
   
+  def remove_stat(self, srv, name):
+    n = f'{name}_{srv}'
+    del self.all_state[n]
+  
   def get_reply(self, model_tokens, model_state, out, chat_param, user='', bot='', reply_owner='bot'):
     if not user:
       user = self.user

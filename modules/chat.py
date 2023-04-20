@@ -41,7 +41,8 @@ class Chat:
     if os.path.exists(f'save/{bot}.sav'):
       data = self.__load_chat()
       self.model_utils.save_all_stat(self.srv_chat, 'chat', data['out'], data['model_tokens'], data['model_state'])
-      self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
+      if data['model_tokens_pre']:
+        self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
       self.chatbot = data['chatbot']
     else:
       self.chatbot = [[None, greeting]]
@@ -68,7 +69,7 @@ class Chat:
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
     except:
-      return '', self.chatbot
+      return '', self.__generate_cai_chat_html()
     new = f"{self.chatbot[-1][0]}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
@@ -98,18 +99,17 @@ class Chat:
     return new_prompt[0]
   
   def clear_last(self):
-    if(len(self.chatbot) < 2):
+    if(len(self.chatbot) == 1):
       return self.__generate_cai_chat_html(), ''
     message = self.chatbot[-1][0]
     self.chatbot = self.chatbot[0:-1]
-    # 1. 将前一次的状态赋予本次
-    out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
-    self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
-    # 2. 构建前一次的状态，如果对话比较长，这个过程会很慢，非常不建议经常使用该功能
-    if len(self.chatbot) < 2:
+    if len(self.chatbot) == 1:
       out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
-      self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
+      self.model_utils.remove_stat(self.srv_chat, 'chat_pre')
     else:
+      out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
       chat_str = self.__get_chatbot_str(self.chatbot[1:])
       out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
@@ -127,7 +127,12 @@ class Chat:
   def __save_chat(self):
     os.makedirs('save', exist_ok=True)
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    out_pre, model_tokens_pre, model_state_pre = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
+    try:
+      out_pre, model_tokens_pre, model_state_pre = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
+    except:
+      out_pre = None
+      model_tokens_pre = None
+      model_state_pre = None
     data = {
       "out": out,
       "model_tokens": model_tokens,
@@ -194,7 +199,7 @@ class Chat:
       chat_str += f'{self.user}:{row[0]}\n\n'
       chat_str += f'{self.bot}:{row[1]}\n\n'
     chat_str += f'{self.user}:'
-    return chat_str
+    return chat_str[len(f'{self.user}:'):]
   
   def get_test_data(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
