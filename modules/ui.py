@@ -270,9 +270,10 @@ class UI:
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
 
       with gr.Tab('调试'):
-        test_area = gr.TextArea(placeholder='输出结果', label='输出')
+        test_now = gr.TextArea(placeholder='当前token', label='输出')
+        test_pre = gr.TextArea(placeholder='上一次token', label='输出')
         test_btn = gr.Button('查看token')
-      test_btn.click(self.chat_model.get_test_data, outputs=[test_area])
+      test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       with gr.Tab('指令'):
         with gr.Row():
