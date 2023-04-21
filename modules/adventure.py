@@ -12,7 +12,7 @@ class Adventure:
   def load_background(self, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty, background):
     model_tokens = []
     model_state = None
-    init_prompt = f"{self.model_utils.user}:{background}\n{self.model_utils.bot}:"
+    init_prompt = f"{self.model_utils.user}: {background}\n\n{self.model_utils.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat(self.srv_adv, 'adv_init', out, model_tokens, model_state)
     self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
@@ -25,7 +25,7 @@ class Adventure:
     return chatbot
   
   def on_message_adv(self, message, chatbot, top_p, top_k, temperature, presence_penalty, frequency_penalty):
-    new = f" {message}\n{self.model_utils.bot}: "
+    new = f"{self.model_utils.user}: {message}\n\n{self.model_utils.bot}:"
     chatbot = chatbot + [[message, None]]
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_adv, 'adv')
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
