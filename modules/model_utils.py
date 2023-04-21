@@ -12,7 +12,8 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHAT_LEN_LONG = 300
+  CHAT_LEN_LONG = 500
+  CHUNK_LEN = 256
   all_state = {}
   user = "Bob"
   bot = "Alice"
@@ -28,7 +29,9 @@ class ModelUtils:
   def run_rnn(self, model_tokens, model_state, tokens):
     tokens = [int(x) for x in tokens]
     model_tokens += tokens
-    out, model_state = self.model.forward(tokens, model_state)
+    while len(tokens) > 0:
+      out, model_state = self.model.forward(tokens[:self.CHUNK_LEN], model_state)
+      tokens = tokens[self.CHUNK_LEN:]
     return out, model_tokens, model_state
   
   def save_all_stat(self, srv, name, last_out, model_tokens, model_state):
@@ -53,7 +56,6 @@ class ModelUtils:
       user = self.user
     if not bot:
       bot = self.bot
-    stop_word = [f'{user}：', f'{bot}：', '#', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:']
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
@@ -70,24 +72,9 @@ class ModelUtils:
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      if reply_owner == 'bot':
-        if send_msg.endswith(f'\n\n{user}:'):
-          send_msg = send_msg[:-len(f'\n\n{user}:')].strip()
-          break
-        if send_msg.endswith(f'\n\n{bot}:'):
-          send_msg += '\n\n请重新生成'
-          break
-      if reply_owner == 'user':
-        if send_msg.endswith(f'\n\n{bot}:'):
-          send_msg = send_msg[:-len(f'\n\n{bot}:')].strip()
-          break
-        if send_msg.endswith(f'\n\n{user}:'):
-          send_msg += '\n\n请重新生成'
-          break
-      for s in stop_word:
-        if send_msg.endswith(s):
-          send_msg += '\n\n请重新生成'
-          return send_msg, out, model_tokens, model_state
+      if '\n\n' in send_msg:
+        send_msg = send_msg.strip()
+        break
     return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
