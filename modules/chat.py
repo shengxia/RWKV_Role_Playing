@@ -1,7 +1,6 @@
 from modules.model_utils import ModelUtils
 from pathlib import Path
-import os, gc, json, datetime
-import torch
+import os, json, datetime
 import pickle
 import copy
 
@@ -46,8 +45,6 @@ class Chat:
     else:
       self.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
-    gc.collect()
-    torch.cuda.empty_cache()
     return self.__generate_cai_chat_html()
   
   def reset_bot(self):
@@ -81,6 +78,8 @@ class Chat:
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+    if len(model_tokens) > 3500:
+      out, model_tokens, model_state = self.arrange_token()
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: {message}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
@@ -220,3 +219,21 @@ class Chat:
     except:
       txt_pre = ''
     return txt_now, txt_pre
+  
+  def arrange_token(self):
+    out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
+    chat_str = ''
+    chat_str_pre = ''
+    i = 0
+    for row in reversed(self.chatbot[:-1]):
+      if len(chat_str_pre) > 900:
+        break
+      chat_str_pre = f'{self.bot}: {row[1]}\n\n' + chat_str_pre
+      chat_str_pre = f'{self.user}: {row[0]}\n\n' + chat_str_pre
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str_pre))
+    self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
+    chat_str += f'{self.user}: {self.chatbot[-1][0]}\n\n'
+    chat_str += f'{self.bot}: {self.chatbot[-1][1]}\n\n'
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+    self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
+    return out, model_tokens, model_state

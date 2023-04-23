@@ -1,4 +1,5 @@
 import copy
+import gc
 import torch
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.allow_tf32 = True
@@ -54,6 +55,8 @@ class ModelUtils:
     del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param):
+    gc.collect()
+    torch.cuda.empty_cache()
     model_state_pre = copy.deepcopy(model_state)
     stop_word = ['Below is an instruction', '#', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:']
     begin = len(model_tokens)
