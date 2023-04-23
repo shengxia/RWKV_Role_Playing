@@ -1,5 +1,4 @@
 from modules.model_utils import ModelUtils
-import gc, torch
 
 class Adventure:
     
@@ -17,8 +16,6 @@ class Adventure:
     self.model_utils.save_all_stat(self.srv_adv, 'adv_init', out, model_tokens, model_state)
     self.model_utils.save_all_stat(self.srv_adv, 'adv_pre', out, model_tokens, model_state)
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    gc.collect()
-    torch.cuda.empty_cache()
     new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     chatbot = [[None, new_reply.replace('\n', '')]]
     self.model_utils.save_all_stat(self.srv_adv, 'adv', out, model_tokens, model_state)
