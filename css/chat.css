@@ -1,6 +1,7 @@
 .warn_btn {
   background: #CC0000 !important;
 }
+
 .chat {
   margin-left: auto;
   margin-right: auto;
@@ -14,81 +15,73 @@
   overflow-wrap: anywhere;
 }
 
-.message_c {
-  display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
+.message {
+  display: flex;
   padding-bottom: 25px;
   font-size: 15px;
   font-family: Helvetica, Arial, sans-serif;
   line-height: 1.428571429;
 }
 
-.circle-you {
+.message_c {
+  justify-content: flex-start;
+}
+
+.message_m {
+  justify-content: flex-end;
+}
+
+.text_c {
+  margin-left: 8px; 
+}
+
+.message-body {
+  padding: 10px;
+}
+
+.message-body-c {
+  border-color: #e5e7eb;
+  border-radius: 0 22px 22px 22px;
+  background-color: #f9fafb;
+}
+
+.dark .message-body-c {
+  border-color: #374151;
+  border-radius: 0 22px 22px 22px;
+  background-color: #111827;
+}
+
+.message-body-m {
+  border-color: #fdba74;
+  border-radius: 22px 0 22px 22px;
+  background-color: #fff7ed;
+}
+
+.dark .message-body-m {
+  border-color: #4b5563;
+  border-radius: 22px 0 22px 22px;
+  background-color: #374151;
+}
+
+.circle-bot {
+  flex: 0 0 50px;
   width: 50px;
   height: 50px;
   background-color: rgb(238, 78, 59);
   border-radius: 50%;
 }
 
-.circle-bot {
-  width: 50px;
-  height: 50px;
-  background-color: rgb(59, 78, 244);
-  border-radius: 50%;
-}
-
-.circle-bot img,
-.circle-you img {
+.circle-bot img {
   border-radius: 50%;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.text {}
-
-.text p {
-  margin-top: 5px;
-}
-
 .username {
   font-weight: bold;
 }
 
-.message-body {}
-
-.message-body img {
-  max-width: 300px;
-  max-height: 300px;
-  border-radius: 20px;
-}
-
-.message-body p {
-  margin-bottom: 0 !important;
-  font-size: 15px !important;
-  line-height: 1.428571429 !important;
-}
-
-.message-body li {
-  margin-top: 0.5em !important;
-  margin-bottom: 0.5em !important;
-}
-
-.message-body li > p {
-  display: inline !important;
-}
-
-.message-body code {
-  overflow-x: auto;
-}
-.message-body :not(pre) > code {
-  white-space: normal !important;
-}
-
-.dark .message-body p em {
-  color: rgb(138, 138, 138) !important;
-}
-
-.message-body p em {
-  color: rgb(110, 110, 110) !important;
+.username-m {
+  text-align: right;
 }
