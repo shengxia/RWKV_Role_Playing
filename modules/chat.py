@@ -27,9 +27,9 @@ class Chat:
     self.bot = bot
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = f"{user}: 你是{bot}，{bot_persona}你称呼我为{user}。\n\n"
+    init_prompt = f"请记住你叫{bot}，{bot_persona}你称呼我为{user}，你的描述应当详细冗长,你的语言应当生动且富有创意。\n\n"
     if greeting:
-      init_prompt += f"{bot}: {greeting}"
+      init_prompt += f"{bot}: 好的，{greeting}"
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
@@ -76,9 +76,11 @@ class Chat:
     return '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+    if not message:
+      return '', self.__generate_cai_chat_html()
     message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(model_tokens) > 3500:
+    if len(model_tokens) > 3000:
       out, model_tokens, model_state = self.arrange_token()
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: {message}\n\n{self.bot}:"
@@ -169,15 +171,15 @@ class Chat:
     for row in chatbot:
       row[1] = row[1].replace('\n', '<br/>')
       output += f"""
-        <div class="message_c">
+        <div class="message message_c">
           <div class="circle-bot">
             {img_bot}
           </div>
-          <div class="text">
+          <div class="text_c">
             <div class="username">
               {self.bot}
             </div>
-            <div class="message-body">
+            <div class="message-body message-body-c">
               {row[1]}
             </div>
           </div>
@@ -186,15 +188,12 @@ class Chat:
       if row[0] != None:
         row[0] = row[0].replace('\n', '<br/>')
         output += f"""
-          <div class="message_c">
-            <div class="circle-you">
-              {img_me}
-            </div>
-            <div class="text">
-              <div class="username">
+          <div class="message message_m">
+            <div class="text_m">
+              <div class="username username-m">
                 {self.user}
               </div>
-              <div class="message-body">
+              <div class="message-body message-body-m">
                 {row[0]}
               </div>
             </div>
@@ -226,7 +225,7 @@ class Chat:
     chat_str_pre = ''
     i = 0
     for row in reversed(self.chatbot[:-1]):
-      if len(chat_str_pre) > 900:
+      if len(chat_str_pre) > 400:
         break
       chat_str_pre = f'{self.bot}: {row[1]}\n\n' + chat_str_pre
       chat_str_pre = f'{self.user}: {row[0]}\n\n' + chat_str_pre

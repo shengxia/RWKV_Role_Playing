@@ -13,12 +13,10 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHAT_LEN_SHORT = 70
-  CHAT_LEN_LONG = 150
+  CHAT_LEN_SHORT = 100
+  CHAT_LEN_LONG = 500
   CHUNK_LEN = 100
   all_state = {}
-  user = "Bob"
-  bot = "Alice"
   END_OF_LINE = 187
   
   def __init__(self, args):
@@ -58,20 +56,20 @@ class ModelUtils:
     gc.collect()
     torch.cuda.empty_cache()
     model_state_pre = copy.deepcopy(model_state)
-    stop_word = ['Below is an instruction', '#', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:']
+    stop_word = ['Below is an instruction', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:', 'Bob:', 'Alice:', 'Question:', 'Answer:']
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    for i in range(999):
-      if i <= 0:
-        nl_bias = -float('inf')
-      elif i <= self.CHAT_LEN_SHORT:
-        nl_bias = (i - self.CHAT_LEN_SHORT) / 10
-      elif i <= self.CHAT_LEN_LONG:
-        nl_bias = 0
-      else:
-        nl_bias = (i - self.CHAT_LEN_LONG) * 0.25
-      out[self.END_OF_LINE] += nl_bias
+    for i in range(self.CHAT_LEN_LONG):
+      # if i <= 0:
+      #   nl_bias = -float('inf')
+      # elif i <= self.CHAT_LEN_SHORT:
+      #   nl_bias = (i - self.CHAT_LEN_SHORT) / 10
+      # elif i <= self.CHAT_LEN_LONG:
+      #   nl_bias = 0
+      # else:
+      #   nl_bias = (i - self.CHAT_LEN_LONG) * 0.25
+      # out[self.END_OF_LINE] += nl_bias
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
