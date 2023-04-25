@@ -92,7 +92,19 @@ class UI:
     return_arr = self.__unlock_param(self.lock_flag_role)
     self.lock_flag_role = not self.lock_flag_role
     return return_arr
+
+  def __send_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+    text, chatbot = self.chat_model.on_message(message, top_p, top_k, temperature, presence_penalty, frequency_penalty)
+    show_label = False
+    if self.chat_model.check_token_count():
+      show_label = True
+    return text, chatbot, gr.Text.update(show_label=show_label)
   
+  def __arrange_token(self):
+    if self.chat_model.check_token_count():
+      self.chat_model.arrange_token()
+      return gr.Text.update(show_label=False)
+
   def __reset_chatbot(self):
     message, chatbot = self.chat_model.reset_bot()
     return_arr = (
@@ -138,14 +150,12 @@ class UI:
     with gr.Blocks(title="RWKV角色扮演") as app:
       if not os.path.isfile(self.config_role_path):
         self.__save_config_role()
-      if not os.path.isfile(self.config_adv_path):
-        self.__save_config_adv()
 
       with gr.Tab("聊天"):
         with gr.Row():
           with gr.Column(scale=3):
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
-            message = gr.Textbox(placeholder='说些什么吧', show_label=False, interactive=False)
+            message = gr.Textbox(placeholder='说些什么吧', show_label=False, label='整理Token中……', interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
                 submit = gr.Button('提交', interactive=False)       
@@ -199,8 +209,8 @@ class UI:
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       save_conf.click(self.__save_config_role, inputs=input_list[1:])
-      message.submit(self.chat_model.on_message, inputs=input_list, outputs=output_list)
-      submit.click(self.chat_model.on_message, inputs=input_list, outputs=output_list)
+      message.submit(self.__send_message, inputs=input_list, outputs=output_list + [message]).then(self.__arrange_token, outputs=[message], show_progress=False)
+      submit.click(self.__send_message, inputs=input_list, outputs=output_list + [message]).then(self.__arrange_token, outputs=[message], show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message])

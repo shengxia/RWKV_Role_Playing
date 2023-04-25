@@ -53,14 +53,12 @@
 
 .message-body-m {
   border-color: #fdba74;
-  text-align: right;
   border-radius: 22px 0 22px 22px;
   background-color: #fff7ed;
 }
 
 .dark .message-body-m {
   border-color: #4b5563;
-  text-align: right;
   border-radius: 22px 0 22px 22px;
   background-color: #374151;
 }
