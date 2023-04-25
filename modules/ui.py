@@ -8,11 +8,15 @@ class UI:
   chat_model = None
   char_path = './chars'
   config_role_path = './config/config_role.json'
+  language_path = './language/'
   lock_flag_role = True
+  language_conf = None
 
-  def __init__(self, model_utils:ModelUtils):
+  def __init__(self, model_utils:ModelUtils, lang):
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils)
+    self.chat_model = Chat(model_utils, lang)
+    with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
+      self.language_conf = json.loads(f.read())
 
   def __get_json_files(self, path):
     files=os.listdir(path)
@@ -53,7 +57,7 @@ class UI:
   # 载入角色
   def __load_char(self, file_name):
     if not file_name:
-      raise gr.Error("请选择一个角色")
+      raise gr.Error(self.language_conf['LOAD_CHAR_ERROR'])
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
     chatbot = self.chat_model.load_init_prompt(char['user'], char['bot'], char['greeting'], char['bot_persona'])
@@ -138,9 +142,9 @@ class UI:
     return return_arr
   
   def __unlock_param(self, flag):
-    text = '锁定'
+    text = self.language_conf['LOCK']
     if not flag:
-      text = '解锁'
+      text = self.language_conf['UNLOCK']
     return_arr = (
       gr.Slider.update(interactive=flag), 
       gr.Slider.update(interactive=flag), 
@@ -168,39 +172,39 @@ class UI:
 
   # 创建UI
   def create_ui(self):
-    with gr.Blocks(title="RWKV角色扮演") as app:
+    with gr.Blocks(title=self.language_conf['TITLE']) as app:
       if not os.path.isfile(self.config_role_path):
         self.__save_config_role()
 
-      with gr.Tab("聊天"):
+      with gr.Tab(self.language_conf['CHAT_TAB']):
         with gr.Row():
           with gr.Column(scale=3):
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
-            message = gr.Textbox(placeholder='说些什么吧', show_label=False, label='整理Token中……', interactive=False)
+            message = gr.Textbox(placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
-                submit = gr.Button('提交', interactive=False)       
+                submit = gr.Button(self.language_conf['SUBMIT'], interactive=False)       
               with gr.Column(min_width=100):
-                get_prompt_btn = gr.Button('提词', interactive=False)
+                get_prompt_btn = gr.Button(self.language_conf['GET_PROMPT'], interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
-                regen = gr.Button('重新生成', interactive=False)
+                regen = gr.Button(self.language_conf['REGEN'], interactive=False)
               with gr.Column(min_width=100):
-                clear_last_btn = gr.Button('清除上一条', interactive=False)
-            delete = gr.Button('清空聊天', interactive=False)
+                clear_last_btn = gr.Button(self.language_conf['CLEAR_LAST'], interactive=False)
+            delete = gr.Button(self.language_conf['CLEAR_CHAT'], interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
-                clear_chat = gr.Button('清空', visible=False, elem_classes='warn_btn')
+                clear_chat = gr.Button(self.language_conf['CLEAR'], visible=False, elem_classes='warn_btn')
               with gr.Column(min_width=100):
-                clear_cancel = gr.Button('取消', visible=False)
+                clear_cancel = gr.Button(self.language_conf['CANCEL'], visible=False)
           with gr.Column(scale=1):
             with gr.Row():
-              char_dropdown = gr.Dropdown(None, interactive=True, label="请选择角色")
+              char_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['CHAR_DP_LB'])
             with gr.Row():
               with gr.Column(min_width=100):
-                refresh_char_btn = gr.Button("刷新角色列表")
+                refresh_char_btn = gr.Button(self.language_conf['REFRESH_CHAR'])
               with gr.Column(min_width=100):
-                load_char_btn = gr.Button("载入角色")
+                load_char_btn = gr.Button(self.language_conf['LOAD_CHAR'])
             top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
             top_k = gr.Slider(minimum=0, maximum=200, step=1, interactive=False, label='Top K')
             temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
@@ -208,19 +212,19 @@ class UI:
             frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
             with gr.Row():
               with gr.Column(min_width=100):
-                unlock_btn = gr.Button('解锁')
+                unlock_btn = gr.Button(self.language_conf['UNLOCK'])
               with gr.Column(min_width=100):
-                save_conf = gr.Button('保存')
+                save_conf = gr.Button(self.language_conf['SAVE_CFG'])
 
-      with gr.Tab("角色"):
+      with gr.Tab(self.language_conf['CHAR']):
         with gr.Row():
           with gr.Column():
-            user = gr.Textbox(placeholder='AI怎么称呼你', label='你的名字')
-            bot = gr.Textbox(placeholder='角色名字', label='角色的名字')
-            greeting = gr.Textbox(placeholder='开场白', label='开场白')
+            user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
+            bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
+            greeting = gr.Textbox(placeholder=self.language_conf['GREETING_PH'], label=self.language_conf['GREETING_LB'])
           with gr.Column():
-            bot_persona = gr.TextArea(placeholder='角色性格', label='角色的性格', lines=10)
-        save_char_btn = gr.Button('保存角色')
+            bot_persona = gr.TextArea(placeholder=self.language_conf['PERSONA_PH'], label=self.language_conf['PERSONA_LB'], lines=10)
+        save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
       input_list = [message, top_p, top_k, temperature, presence_penalty, frequency_penalty]
       output_list = [message, chatbot]
@@ -241,10 +245,10 @@ class UI:
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
 
-      with gr.Tab('调试'):
-        test_now = gr.TextArea(placeholder='当前token', label='输出')
-        test_pre = gr.TextArea(placeholder='上一次token', label='输出')
-        test_btn = gr.Button('查看token')
+      with gr.Tab(self.language_conf['DEBUG']):
+        test_now = gr.TextArea(placeholder=self.language_conf['TOKEN_NOW'], label=self.language_conf['OUTPUT'])
+        test_pre = gr.TextArea(placeholder=self.language_conf['TOKEN_LAST'], label=self.language_conf['OUTPUT'])
+        test_btn = gr.Button(self.language_conf['GET_TOKEN'])
       test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       reload_list = [

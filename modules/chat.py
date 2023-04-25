@@ -15,9 +15,11 @@ class Chat:
   greeting = ''
   bot_persona = ''
   process_flag = False
+  lang = None
 
-  def __init__(self, model_utils:ModelUtils):
+  def __init__(self, model_utils:ModelUtils, lang):
     self.model_utils = model_utils
+    self.lang = lang
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
@@ -28,7 +30,7 @@ class Chat:
     self.bot = bot
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = f"你叫{bot}，{bot_persona}\n你称呼我为{user}。\n你应当使用“（你的动作）”的形式来对你的动作进行详细的描述并加入到回答中。\n你的回答应当生动且富有创意。\n\n"
+    init_prompt = self.__get_init_prompt(bot, bot_persona, user)
     if greeting:
       init_prompt += f"{bot}: {greeting}"
     init_prompt = init_prompt.strip().split('\n')
@@ -207,6 +209,13 @@ class Chat:
       chat_str += f'{self.bot}: {row[1]}\n\n'
     return chat_str
   
+  def __get_init_prompt(self, bot, bot_persona, user):
+    if self.lang == 'en':
+      init_prompt = f"You are {bot}，{bot_persona}\nYou call me {user}。\n\n"
+    else:
+      init_prompt = f"你叫{bot}，{bot_persona}\n你称呼我为{user}。\n你应当使用“（你的动作）”的形式来对你的动作进行详细的描述并加入到回答中。\n你的回答应当生动且富有创意。\n\n"
+    return init_prompt
+
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     txt_now = f"一共：{len(data_now[1])}个token。\n\n{self.model_utils.pipeline.decode(data_now[1])}"
