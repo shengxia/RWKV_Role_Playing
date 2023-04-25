@@ -13,8 +13,8 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHAT_LEN_SHORT = 100
-  CHAT_LEN_LONG = 500
+  CHAT_LEN_SHORT = 80
+  CHAT_LEN_LONG = 160
   CHUNK_LEN = 100
   all_state = {}
   END_OF_LINE = 187
@@ -61,15 +61,15 @@ class ModelUtils:
     out_last = begin
     occurrence = {}
     for i in range(self.CHAT_LEN_LONG):
-      # if i <= 0:
-      #   nl_bias = -float('inf')
-      # elif i <= self.CHAT_LEN_SHORT:
-      #   nl_bias = (i - self.CHAT_LEN_SHORT) / 10
-      # elif i <= self.CHAT_LEN_LONG:
-      #   nl_bias = 0
-      # else:
-      #   nl_bias = (i - self.CHAT_LEN_LONG) * 0.25
-      # out[self.END_OF_LINE] += nl_bias
+      if i <= 0:
+        nl_bias = -float('inf')
+      elif i <= self.CHAT_LEN_SHORT:
+        nl_bias = (i - self.CHAT_LEN_SHORT) / 10
+      elif i <= self.CHAT_LEN_LONG:
+        nl_bias = 0
+      else:
+        nl_bias = (i - self.CHAT_LEN_LONG) * 0.25
+      out[self.END_OF_LINE] += nl_bias
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
@@ -87,6 +87,7 @@ class ModelUtils:
         break
       for s in stop_word:
         if send_msg.endswith(s):
+          print(f'error:{send_msg}')
           idx = send_msg.find(s)
           send_msg = f" {send_msg[:idx].strip()}"
           tokens = self.pipeline.encode(send_msg + '\n\n')

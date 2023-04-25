@@ -28,9 +28,9 @@ class Chat:
     self.bot = bot
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = f"请记住你叫{bot}，{bot_persona}你称呼我为{user}，你的描述应当详细冗长,你的语言应当生动且富有创意。\n\n"
+    init_prompt = f"你叫{bot}，{bot_persona}\n你称呼我为{user}。\n你应当使用“（你的动作）”的形式来对你的动作进行详细的描述并加入到回答中。\n你的回答应当生动且富有创意。\n\n"
     if greeting:
-      init_prompt += f"{bot}: 好的，{greeting}"
+      init_prompt += f"{bot}: {greeting}"
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
