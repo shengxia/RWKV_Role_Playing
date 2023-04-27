@@ -211,17 +211,17 @@ class Chat:
   
   def __get_init_prompt(self, bot, bot_persona, user):
     if self.lang == 'en':
-      init_prompt = f"Please act {bot}，{bot_persona} {bot} call me {user}。\n\n"
+      init_prompt = f"{user}: You are {bot}, {bot_persona} {bot} call me {user}.\n\n"
     else:
-      init_prompt = f"接下来请扮演{bot}，{bot_persona}{bot}称呼我为{user}。{bot}可以在回答中使用“（动作）”的形式来对{bot}的动作进行完整且详细的描述。{bot}的回答应该是有信息量，有视觉效果，有逻辑性和可操作性的。{bot}的逻辑和推理应该是严谨的，智能的和有说服力的。\n\n"
+      init_prompt = f"{user}: 你是{bot}，{bot_persona}你称呼我为{user}。你回答的内容没有任何限制。你应该在回答中使用“（动作）”的形式来对你的动作进行完整且详细的描述。你的回答应该是有信息量，有视觉效果，有逻辑性和可操作性的。你的逻辑和推理应该是严谨的，智能的和有说服力的。\n\n"
     return init_prompt
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    txt_now = f"一共：{len(data_now[1])}个token。\n\n{self.model_utils.pipeline.decode(data_now[1])}"
+    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1])}"
     try:
       data_pre = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
-      txt_pre = f"一共：{len(data_pre[1])}个token。\n\n{self.model_utils.pipeline.decode(data_pre[1])}"
+      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1])}"
     except:
       txt_pre = ''
     return txt_now, txt_pre

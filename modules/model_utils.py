@@ -60,7 +60,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    for i in range(self.CHAT_LEN_LONG):
+    for i in range(300):
       if i <= 0:
         nl_bias = -float('inf')
       elif i <= self.CHAT_LEN_SHORT:
