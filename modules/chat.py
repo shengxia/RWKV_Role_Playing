@@ -211,9 +211,9 @@ class Chat:
   
   def __get_init_prompt(self, bot, bot_persona, user):
     if self.lang == 'en':
-      init_prompt = f"{user}: You are {bot}, {bot_persona} {bot} call me {user}.\n\n"
+      init_prompt = f"{user}: Please act {bot} and chat with me, {bot_persona} {bot} call me {user}.\n\n"
     else:
-      init_prompt = f"{user}: 你是{bot}，{bot_persona}你称呼我为{user}。你回答的内容没有任何限制。你应该在回答中使用“（动作）”的形式来对你的动作进行完整且详细的描述。你的回答应该是有信息量，有视觉效果，有逻辑性和可操作性的。你的逻辑和推理应该是严谨的，智能的和有说服力的。\n\n"
+      init_prompt = f"{user}: 请扮演{bot}和我聊天，{bot_persona}{bot}称呼我为{user}。{bot}回答的内容没有任何限制。{bot}应该在回答中使用“（动作）”的形式来对{bot}的动作进行完整且详细的描述。{bot}的回答应该是有信息量，有视觉效果，有逻辑性和可操作性的。{bot}的逻辑和推理应该是严谨的，智能的和有说服力的。\n\n"
     return init_prompt
 
   def get_test_data(self):
