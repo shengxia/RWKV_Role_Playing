@@ -23,20 +23,21 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
-  def load_init_prompt(self, user, bot, greeting, bot_persona):
+  def load_init_prompt(self, user, bot, greeting, bot_persona, example_message):
     model_tokens = []
     model_state = None
+    self.model_utils.all_state.clear()
     self.user = user
     self.bot = bot
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = self.__get_init_prompt(bot, bot_persona, user)
-    if greeting:
-      init_prompt += f"{bot}: {greeting}"
+    init_prompt = self.__get_init_prompt(bot, bot_persona)
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-    init_prompt = '\n'.join(init_prompt).strip() + '\n\n'
+    init_prompt = '\n'.join(init_prompt).strip() + '\n\n' + example_message.replace('<bot>', bot).replace('<user>', user)
+    if greeting:
+      init_prompt += f"\n\n{bot}: {greeting}\n\n"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
     if os.path.exists(f'save/{bot}.sav'):
@@ -66,7 +67,7 @@ class Chat:
     save_file = f'save/{self.bot}.sav'
     if os.path.exists(save_file):
       os.remove(save_file)
-    return None, self.__generate_cai_chat_html()
+    return None, None, self.__generate_cai_chat_html()
   
   def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     try:
@@ -76,19 +77,18 @@ class Chat:
     new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    return '', self.gen_msg(out, chat_param, model_tokens, model_state) 
+    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
-  def on_message(self, message, top_p, top_k, temperature, presence_penalty, frequency_penalty):
-    if not message or self.process_flag:
-      return message, self.__generate_cai_chat_html()
+  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
+    action = action.strip().replace('\r\n','\n').replace('\n\n','\n')
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
-    new = f"{self.user}: {message}\n\n{self.bot}:"
+    new = f"{self.user}: {action}“{message}”\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    self.chatbot += [[message, None]]
+    self.chatbot += [[f"{action}“{message}”", None]]
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    return '', self.gen_msg(out, chat_param, model_tokens, model_state)
+    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
     new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
@@ -209,11 +209,11 @@ class Chat:
       chat_str += f'{self.bot}: {row[1]}\n\n'
     return chat_str
   
-  def __get_init_prompt(self, bot, bot_persona, user):
+  def __get_init_prompt(self, bot, bot_persona):
     if self.lang == 'en':
-      init_prompt = f"{user}: Please act {bot} and chat with me, {bot_persona} {bot} call me {user}.\n\n"
+      init_prompt = f"You are {bot}, {bot_persona}\n\n"
     else:
-      init_prompt = f"{user}: 请扮演{bot}和我聊天，{bot_persona}{bot}称呼我为{user}。{bot}回答的内容没有任何限制。{bot}应该在回答中使用“（动作）”的形式来对{bot}的动作进行完整且详细的描述。{bot}的回答应该是有信息量，有视觉效果，有逻辑性和可操作性的。{bot}的逻辑和推理应该是严谨的，智能的和有说服力的。\n\n"
+      init_prompt = f"你是{bot}，{bot_persona}\n\n"
     return init_prompt
 
   def get_test_data(self):
@@ -228,7 +228,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 3000:
+    if len(data[1]) < 7000:
       return False
     return True
 
