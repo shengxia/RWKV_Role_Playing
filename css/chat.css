@@ -23,6 +23,10 @@
   line-height: 1.428571429;
 }
 
+.message i {
+  color: #999 !important;
+}
+
 .message_c {
   justify-content: flex-start;
 }

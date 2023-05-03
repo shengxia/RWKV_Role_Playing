@@ -2,7 +2,7 @@ from modules.model_utils import ModelUtils
 from pathlib import Path
 import os, json, datetime
 import pickle
-import copy
+import copy, re
 
 class Chat:
   
@@ -31,7 +31,7 @@ class Chat:
     self.bot = bot
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = self.__get_init_prompt(bot, bot_persona)
+    init_prompt = self.__get_init_prompt(bot, bot_persona, user)
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
@@ -80,13 +80,21 @@ class Chat:
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty):
-    message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
-    action = action.strip().replace('\r\n','\n').replace('\n\n','\n')
+    if message:
+      message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
+    if action:
+      action = action.strip().replace('\r\n','\n').replace('\n\n','\n')
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
-    new = f"{self.user}: {action}“{message}”\n\n{self.bot}:"
+    new = f"{self.user}: "
+    msg = ''
+    if action:
+      msg += f"{action}"
+    if message:
+      msg += f"“{message}”"
+    new += f"{msg}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    self.chatbot += [[f"{action}“{message}”", None]]
+    self.chatbot += [[msg, None]]
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
@@ -104,7 +112,10 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
-    return new_prompt[0]
+    pos_arr = list(self.__find_all_chat(new_prompt[0]))
+    chat_action_data = self.__format_chat_action(pos_arr, new_prompt[0])
+    chat, action = self.__get_chat_action(chat_action_data)
+    return chat, action
   
   def clear_last(self):
     if(len(self.chatbot) == 1):
@@ -129,7 +140,10 @@ class Chat:
       self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     self.__save_chat()
     self.__save_log()
-    return self.__generate_cai_chat_html(), message
+    pos_arr = list(self.__find_all_chat(message))
+    chat_action_data = self.__format_chat_action(pos_arr, message)
+    chat, action = self.__get_chat_action(chat_action_data)
+    return self.__generate_cai_chat_html(), chat, action
   
   def __save_log(self):
     os.makedirs('log', exist_ok=True)
@@ -169,7 +183,9 @@ class Chat:
     chatbot = copy.deepcopy(self.chatbot)
     chatbot.reverse()
     for row in chatbot:
-      row[1] = row[1].replace('\n', '<br/>')
+      pos_arr = list(self.__find_all_chat(row[1]))
+      chat_action_data = self.__format_chat_action(pos_arr, row[1])
+      msg = self.__format_chat_html(chat_action_data)
       output += f"""
         <div class="message message_c">
           <div class="circle-bot">
@@ -180,13 +196,15 @@ class Chat:
               {self.bot}
             </div>
             <div class="message-body message-body-c">
-              {row[1]}
+              {msg}
             </div>
           </div>
         </div>
       """
       if row[0] != None:
-        row[0] = row[0].replace('\n', '<br/>')
+        pos_arr = list(self.__find_all_chat(row[0]))
+        chat_action_data = self.__format_chat_action(pos_arr, row[0])
+        msg = self.__format_chat_html(chat_action_data)
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -194,7 +212,7 @@ class Chat:
                 {self.user}
               </div>
               <div class="message-body message-body-m">
-                {row[0]}
+                {msg}
               </div>
             </div>
           </div>
@@ -209,11 +227,11 @@ class Chat:
       chat_str += f'{self.bot}: {row[1]}\n\n'
     return chat_str
   
-  def __get_init_prompt(self, bot, bot_persona):
+  def __get_init_prompt(self, bot, bot_persona, user):
     if self.lang == 'en':
       init_prompt = f"You are {bot}, {bot_persona}\n\n"
     else:
-      init_prompt = f"你是{bot}，{bot_persona}\n\n"
+      init_prompt = f"你是{bot}，{bot_persona}，你要合理的使用旁白来描述你的行动及行动所产生的后果。\n\n"
     return init_prompt
 
   def get_test_data(self):
@@ -250,3 +268,45 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.process_flag = False
+
+  def __find_all_chat(self, input_str):
+    pattern = r'\“.*?\”'
+    while True:
+      match = re.search(pattern, input_str)
+      if not match:
+        break
+      yield match.span()
+      input_str = input_str[match.end():]
+
+  def __format_chat_action(self, pos_arr, input_str):
+    output_data = []
+    for l in pos_arr:
+      if l[0] != 0:
+        str1 = input_str[:l[0]]
+        output_data.append([str1, 'action'])
+      output_data.append([input_str[l[0] + 1:l[1] - 1], 'chat'])
+      input_str = input_str[l[1]:]
+    if str:
+      output_data.append([input_str, 'action'])
+    return output_data
+    
+  def __format_chat_html(self, chat_action_arr):
+    output_str = ''
+    for ca in chat_action_arr:
+      if ca[1] == 'action':
+        output_str += f'<i>{ca[0]}</i><br>'
+      else:
+        output_str += f'{ca[0]}<br>'
+    return output_str[:-4]
+  
+  def __get_chat_action(self, chat_action_arr):
+    chat = ''
+    action = ''
+    for i in chat_action_arr:
+      if chat == '':
+        if i[1] == 'chat':
+          chat = i[0]
+      if action == '':
+        if i[1] == 'action':
+          action = i[0]
+    return chat, action

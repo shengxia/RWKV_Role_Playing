@@ -188,7 +188,7 @@ class UI:
         with gr.Row():
           with gr.Column(scale=3):
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
-            action = gr.Textbox(placeholder="做些什么吧", show_label=False, interactive=False)
+            action = gr.Textbox(placeholder=self.language_conf['NARR_PH'], show_label=False, interactive=False)
             message = gr.Textbox(placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
             with gr.Row():
               with gr.Column(min_width=100):
@@ -234,7 +234,7 @@ class UI:
           with gr.Column():
             bot_persona = gr.TextArea(placeholder=self.language_conf['PERSONA_PH'], label=self.language_conf['PERSONA_LB'], lines=10)
         with gr.Row():
-          example_message = gr.TextArea(placeholder='示例对话', label='请输入示例对话', lines=10)
+          example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
       input_list = [message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty]
@@ -250,8 +250,8 @@ class UI:
       submit.click(self.__send_message, inputs=input_list, outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
-      clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message])
+      clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message, action])
       unlock_btn.click(self.__unlock_role_param, outputs=input_list[2:] + [unlock_btn])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
