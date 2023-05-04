@@ -101,8 +101,8 @@ class UI:
     self.lock_flag_role = not self.lock_flag_role
     return return_arr
 
-  def __send_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty):
-    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty)
+  def __send_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front):
+    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -188,8 +188,9 @@ class UI:
         with gr.Row():
           with gr.Column(scale=3):
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
-            action = gr.Textbox(placeholder=self.language_conf['NARR_PH'], show_label=False, interactive=False)
             message = gr.Textbox(placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
+            action = gr.Textbox(placeholder=self.language_conf['NARR_PH'], show_label=False, interactive=False)
+            action_front = gr.Checkbox(label="旁白在前")
             with gr.Row():
               with gr.Column(min_width=100):
                 submit = gr.Button(self.language_conf['SUBMIT'], interactive=False)       
@@ -245,9 +246,9 @@ class UI:
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       save_conf.click(self.__save_config_role, inputs=input_list[2:])
-      message.submit(self.__send_message, inputs=input_list, outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      action.submit(self.__send_message, inputs=input_list, outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      submit.click(self.__send_message, inputs=input_list, outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      message.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])

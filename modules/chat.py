@@ -79,7 +79,7 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
-  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front):
     if message:
       message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
     if action:
@@ -87,11 +87,13 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: "
-    msg = ''
-    if action:
-      msg += f"{action}"
-    if message:
-      msg += f"“{message}”"
+    msg = f"{action}"
+    if action_front:
+      if message:
+        msg += f"“{message}”"
+    else:
+      if message:
+        msg = f"“{message}”{msg}"
     new += f"{msg}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.chatbot += [[msg, None]]
