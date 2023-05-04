@@ -192,14 +192,13 @@ class UI:
             action = gr.Textbox(placeholder=self.language_conf['NARR_PH'], show_label=False, interactive=False)
             action_front = gr.Checkbox(label="旁白在前")
             with gr.Row():
-              with gr.Column(min_width=100):
+              with gr.Column(min_width=150):
                 submit = gr.Button(self.language_conf['SUBMIT'], interactive=False)       
-              with gr.Column(min_width=100):
-                get_prompt_btn = gr.Button(self.language_conf['GET_PROMPT'], interactive=False)
-            with gr.Row():
-              with gr.Column(min_width=100):
+              with gr.Column(min_width=150):
                 regen = gr.Button(self.language_conf['REGEN'], interactive=False)
-              with gr.Column(min_width=100):
+              with gr.Column(min_width=150):
+                get_prompt_btn = gr.Button(self.language_conf['GET_PROMPT'], interactive=False)
+              with gr.Column(min_width=150):
                 clear_last_btn = gr.Button(self.language_conf['CLEAR_LAST'], interactive=False)
             delete = gr.Button(self.language_conf['CLEAR_CHAT'], interactive=False)
             with gr.Row():
