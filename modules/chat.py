@@ -80,10 +80,8 @@ class Chat:
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front):
-    if message:
-      message = message.strip().replace('\r\n','\n').replace('\n\n','\n')
-    if action:
-      action = action.strip().replace('\r\n','\n').replace('\n\n','\n')
+    message = message.strip().replace('\r\n','\n').replace('\n\n','\n') if message else ''
+    action = action.strip().replace('\r\n','\n').replace('\n\n','\n') if action else ''
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: "
