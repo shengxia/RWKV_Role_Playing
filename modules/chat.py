@@ -85,13 +85,13 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: "
-    msg = f"{action}"
+    msg = f"{message}"
     if action_front:
-      if message:
-        msg += f"“{message}”"
+      if action:
+        msg = f"({action}){msg}"
     else:
-      if message:
-        msg = f"“{message}”{msg}"
+      if action:
+        msg += f"({action})"
     new += f"{msg}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.chatbot += [[msg, None]]
@@ -270,7 +270,7 @@ class Chat:
     self.process_flag = False
 
   def __find_all_chat(self, input_str):
-    pattern = r'\“.*?\”'
+    pattern = r'\(.*?\)'
     while True:
       match = re.search(pattern, input_str)
       if not match:
@@ -283,11 +283,11 @@ class Chat:
     for l in pos_arr:
       if l[0] != 0:
         str1 = input_str[:l[0]]
-        output_data.append([str1, 'action'])
-      output_data.append([input_str[l[0] + 1:l[1] - 1], 'chat'])
+        output_data.append([str1, 'chat'])
+      output_data.append([input_str[l[0] + 1:l[1] - 1], 'action'])
       input_str = input_str[l[1]:]
     if str:
-      output_data.append([input_str, 'action'])
+      output_data.append([input_str, 'chat'])
     return output_data
     
   def __format_chat_html(self, chat_action_arr):

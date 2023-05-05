@@ -53,14 +53,12 @@ class ModelUtils:
     del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param):
-    gc.collect()
-    torch.cuda.empty_cache()
     model_state_pre = copy.deepcopy(model_state)
     stop_word = ['Below is an instruction', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:', 'Bob:', 'Alice:', 'Question:', 'Answer:']
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    for i in range(300):
+    for i in range(999):
       if i <= 0:
         nl_bias = -float('inf')
       elif i <= self.CHAT_LEN_SHORT:
