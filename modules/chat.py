@@ -12,6 +12,8 @@ class Chat:
   chatbot = []
   user = ''
   bot = ''
+  action_start = ''
+  action_end = ''
   greeting = ''
   bot_persona = ''
   process_flag = False
@@ -23,12 +25,14 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
-  def load_init_prompt(self, user, bot, greeting, bot_persona, example_message):
+  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message):
     model_tokens = []
     model_state = None
     self.model_utils.all_state.clear()
     self.user = user
     self.bot = bot
+    self.action_start = action_start
+    self.action_end = action_end
     self.greeting = greeting
     self.bot_persona = bot_persona
     init_prompt = self.__get_init_prompt(bot, bot_persona, user)
@@ -246,7 +250,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 7000:
+    if len(data[1]) < 5500:
       return False
     return True
 
@@ -270,7 +274,9 @@ class Chat:
     self.process_flag = False
 
   def __find_all_chat(self, input_str):
-    pattern = r'\(.*?\)'
+    if not self.action_start or not self.action_end:
+      return (0, len(input_str))
+    pattern = re.compile("\\" + self.action_start + ".*?\\" + self.action_end)
     while True:
       match = re.search(pattern, input_str)
       if not match:
