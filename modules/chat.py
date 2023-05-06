@@ -35,11 +35,11 @@ class Chat:
     self.action_end = action_end
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = self.__get_init_prompt(bot, bot_persona, user)
+    init_prompt = self.__get_init_prompt(bot, bot_persona, user, example_message)
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
-    init_prompt = '\n'.join(init_prompt).strip() + '\n\n' + example_message.replace('<bot>', bot).replace('<user>', user)
+    init_prompt = '\n'.join(init_prompt).strip()
     if greeting:
       init_prompt += f"\n\n{bot}: {greeting}\n\n"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
@@ -92,10 +92,10 @@ class Chat:
     msg = f"{message}"
     if action_front:
       if action:
-        msg = f"({action}){msg}"
+        msg = f"{self.action_start}{action}{self.action_end}{msg}"
     else:
       if action:
-        msg += f"({action})"
+        msg += f"{self.action_start}{action}{self.action_end}"
     new += f"{msg}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.chatbot += [[msg, None]]
@@ -231,11 +231,12 @@ class Chat:
       chat_str += f'{self.bot}: {row[1]}\n\n'
     return chat_str
   
-  def __get_init_prompt(self, bot, bot_persona, user):
+  def __get_init_prompt(self, bot, bot_persona, user, example_message):
+    em = example_message.replace('<bot>', bot).replace('<user>', user)
     if self.lang == 'en':
-      init_prompt = f"You are {bot}, {bot_persona}\n\n"
+      init_prompt = f"You are {bot}, {bot_persona}\n\n{em}"
     else:
-      init_prompt = f"你是{bot}，{bot_persona}，你要合理的使用旁白来描述你的行动及行动所产生的后果。\n\n"
+      init_prompt = f"你是{bot}，{bot_persona}，你要合理的使用旁白来描述你的行动及行动所产生的后果。\n\n{em}"
     return init_prompt
 
   def get_test_data(self):

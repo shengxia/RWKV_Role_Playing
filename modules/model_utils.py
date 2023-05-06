@@ -85,7 +85,6 @@ class ModelUtils:
         break
       for s in stop_word:
         if send_msg.endswith(s):
-          print(f'error:{send_msg}')
           idx = send_msg.find(s)
           send_msg = f" {send_msg[:idx].strip()}"
           tokens = self.pipeline.encode(send_msg + '\n\n')
