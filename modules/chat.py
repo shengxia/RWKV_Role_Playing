@@ -236,7 +236,7 @@ class Chat:
     if self.lang == 'en':
       init_prompt = f"You are {bot}, {bot_persona}\n\n{em}"
     else:
-      init_prompt = f"你是{bot}，{bot_persona}，你要合理的使用旁白来描述你的行动及行动所产生的后果。\n\n{em}"
+      init_prompt = f"你是{bot}，{bot_persona}\n\n{em}"
     return init_prompt
 
   def get_test_data(self):

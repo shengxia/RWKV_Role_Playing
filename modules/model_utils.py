@@ -13,11 +13,8 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHAT_LEN_SHORT = 80
-  CHAT_LEN_LONG = 160
   CHUNK_LEN = 100
   all_state = {}
-  END_OF_LINE = 187
   
   def __init__(self, args):
     self.model_path = args.model
@@ -53,21 +50,10 @@ class ModelUtils:
     del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param):
-    model_state_pre = copy.deepcopy(model_state)
-    stop_word = ['Below is an instruction', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:', 'Bob:', 'Alice:', 'Question:', 'Answer:']
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
     for i in range(999):
-      if i <= 0:
-        nl_bias = -float('inf')
-      elif i <= self.CHAT_LEN_SHORT:
-        nl_bias = (i - self.CHAT_LEN_SHORT) / 10
-      elif i <= self.CHAT_LEN_LONG:
-        nl_bias = 0
-      else:
-        nl_bias = (i - self.CHAT_LEN_LONG) * 0.25
-      out[self.END_OF_LINE] += nl_bias
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
@@ -83,13 +69,6 @@ class ModelUtils:
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
-      for s in stop_word:
-        if send_msg.endswith(s):
-          idx = send_msg.find(s)
-          send_msg = f" {send_msg[:idx].strip()}"
-          tokens = self.pipeline.encode(send_msg + '\n\n')
-          out, model_tokens, model_state = self.run_rnn(model_tokens[:begin], model_state_pre, tokens)
-          return send_msg, out, model_tokens, model_state
     return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
