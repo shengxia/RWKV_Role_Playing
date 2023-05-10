@@ -2,7 +2,8 @@ from modules.model_utils import ModelUtils
 from pathlib import Path
 import os, json, datetime
 import pickle
-import copy, re
+import copy, re, gc
+import torch
 
 class Chat:
   
@@ -26,6 +27,8 @@ class Chat:
       self.chat_css = f.read()
 
   def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message):
+    gc.collect()
+    torch.cuda.empty_cache()
     model_tokens = []
     model_state = None
     self.model_utils.all_state.clear()
@@ -42,7 +45,7 @@ class Chat:
     init_prompt = '\n'.join(init_prompt).strip()
     if greeting:
       init_prompt += f"\n\n{bot}: {greeting}\n\n"
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(init_prompt)))
     self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
     if os.path.exists(f'save/{bot}.sav'):
       data = self.__load_chat()
@@ -84,8 +87,8 @@ class Chat:
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front):
-    message = message.strip().replace('\r\n','\n').replace('\n\n','\n') if message else ''
-    action = action.strip().replace('\r\n','\n').replace('\n\n','\n') if action else ''
+    message = message.strip().replace('\r\n','\n') if message else ''
+    action = action.strip().replace('\r\n','\n') if action else ''
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     new = f"{self.user}: "
@@ -140,7 +143,7 @@ class Chat:
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
       chat_str = self.__get_chatbot_str(self.chatbot[1:-1])
       out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str)))
       self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     self.__save_chat()
     self.__save_log()
@@ -266,11 +269,11 @@ class Chat:
         break
       chat_str_pre = f'{self.bot}: {row[1]}\n\n' + chat_str_pre
       chat_str_pre = f'{self.user}: {row[0]}\n\n' + chat_str_pre
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str_pre))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str_pre)))
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     chat_str += f'{self.user}: {self.chatbot[-1][0]}\n\n'
     chat_str += f'{self.bot}: {self.chatbot[-1][1]}\n\n'
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str)))
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.process_flag = False
 

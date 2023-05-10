@@ -1,5 +1,4 @@
 import copy
-import gc
 import torch
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.allow_tf32 = True
@@ -15,6 +14,8 @@ class ModelUtils:
   strategy = None
   CHUNK_LEN = 100
   all_state = {}
+  END_OF_LINE = [187, 187]
+  END_OF_LINE_DOUBLE = 535
   
   def __init__(self, args):
     self.model_path = args.model
@@ -50,6 +51,8 @@ class ModelUtils:
     del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param):
+    model_state_pre = copy.deepcopy(model_state)
+    stop_word = ['Below is an instruction', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:', 'Bob:', 'Alice:', 'Question:', 'Answer:']
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
@@ -65,11 +68,27 @@ class ModelUtils:
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
-      send_msg = self.pipeline.decode(model_tokens[begin:])
-      if '\n\n' in send_msg:
-        send_msg = send_msg.strip()
+      if model_tokens[begin:][-2:] == self.END_OF_LINE:
+        send_msg = self.pipeline.decode(model_tokens[begin:]).strip()
         break
+      for s in stop_word:
+        if send_msg.endswith(s):
+          print(f'error:{send_msg}')
+          idx = send_msg.find(s)
+          send_msg = f" {send_msg[:idx].strip()}"
+          tokens = self.pipeline.encode(send_msg) + self.END_OF_LINE
+          out, model_tokens, model_state = self.run_rnn(model_tokens[:begin], model_state_pre, tokens)
+          return send_msg, out, model_tokens, model_state
+      # send_msg = self.pipeline.decode(model_tokens[begin:])
+      # if '\n\n' in send_msg:
+      #   send_msg = send_msg.strip()
+      #   break
     return send_msg, out, model_tokens, model_state
+  
+  def fix_tokens(self, tokens):
+    if len(tokens) > 0 and tokens[-1] == self.END_OF_LINE_DOUBLE:
+        tokens = tokens[:-1] + self.END_OF_LINE
+    return tokens
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     chat_param = {
