@@ -68,8 +68,9 @@ class ModelUtils:
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
+      send_msg = self.pipeline.decode(model_tokens[begin:])
       if model_tokens[begin:][-2:] == self.END_OF_LINE:
-        send_msg = self.pipeline.decode(model_tokens[begin:]).strip()
+        send_msg = send_msg.strip()
         break
       for s in stop_word:
         if send_msg.endswith(s):
