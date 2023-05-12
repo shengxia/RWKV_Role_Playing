@@ -254,7 +254,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 5500:
+    if len(data[1]) < 4096:
       return False
     return True
 
