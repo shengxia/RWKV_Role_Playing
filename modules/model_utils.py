@@ -5,6 +5,7 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
+import gc
 
 class ModelUtils:
 
@@ -13,9 +14,14 @@ class ModelUtils:
   model_path = None
   strategy = None
   CHUNK_LEN = 100
+  CHAT_LEN_SHORT = 200
+  CHAT_LEN_LONG = 500
+  END_OF_TEXT = 0
+  END_OF_LINE = 11
+  DOUBLE_END_OF_LINE = 261
+  CHN_COMMA = 19137
+  CHN_PERIOD_END = 28329
   all_state = {}
-  END_OF_LINE = [187, 187]
-  END_OF_LINE_DOUBLE = 535
   
   def __init__(self, args):
     self.model_path = args.model
@@ -23,7 +29,7 @@ class ModelUtils:
 
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
-    self.pipeline = PIPELINE(self.model, f"./20B_tokenizer.json")
+    self.pipeline = PIPELINE(self.model, "rwkv_vocab_v20230424")
 
   def run_rnn(self, model_tokens, model_state, tokens):
     tokens = [int(x) for x in tokens]
@@ -51,53 +57,44 @@ class ModelUtils:
     del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param):
-    model_state_pre = copy.deepcopy(model_state)
-    stop_word = ['Below is an instruction', 'User:', 'AI:', 'Instruction:', 'Response:', 'Human:', 'Task:', 'Prompt:', 'Bob:', 'Alice:', 'Question:', 'Answer:']
+    gc.collect()
+    torch.cuda.empty_cache()
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
+    turns = chat_param['turns']
     for i in range(999):
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
-      if token not in occurrence:
-        occurrence[token] = 1
-      else:
-        occurrence[token] += 1
+      if turns > 1:
+        if token == self.DOUBLE_END_OF_LINE:
+          out[self.DOUBLE_END_OF_LINE] = -999999999
+          out[self.END_OF_LINE] = -999999999
+          turns -= 1
+          continue
+        if token == self.CHN_PERIOD_END:
+          token = self.CHN_COMMA
+          turns -= 1
+      occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
+      out[self.END_OF_TEXT] = -999999999
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      if model_tokens[begin:][-2:] == self.END_OF_LINE:
+      if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
-      for s in stop_word:
-        if send_msg.endswith(s):
-          print(f'error:{send_msg}')
-          idx = send_msg.find(s)
-          send_msg = f" {send_msg[:idx].strip()}"
-          tokens = self.pipeline.encode(send_msg) + self.END_OF_LINE
-          out, model_tokens, model_state = self.run_rnn(model_tokens[:begin], model_state_pre, tokens)
-          return send_msg, out, model_tokens, model_state
-      # send_msg = self.pipeline.decode(model_tokens[begin:])
-      # if '\n\n' in send_msg:
-      #   send_msg = send_msg.strip()
-      #   break
     return send_msg, out, model_tokens, model_state
   
-  def fix_tokens(self, tokens):
-    if len(tokens) > 0 and tokens[-1] == self.END_OF_LINE_DOUBLE:
-        tokens = tokens[:-1] + self.END_OF_LINE
-    return tokens
-  
-  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns=1):
     chat_param = {
       'top_p': top_p,
       'top_k': top_k,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
-      'frequency_penalty': frequency_penalty
+      'frequency_penalty': frequency_penalty,
+      'turns': turns
     }
     return chat_param
-  

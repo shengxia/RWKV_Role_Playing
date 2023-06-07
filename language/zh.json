@@ -16,6 +16,7 @@
   "CHAR_DP_LB": "请选择角色",
   "REFRESH_CHAR": "刷新角色列表",
   "LOAD_CHAR": "载入角色",
+  "TURNS": "生成次数",
   "LOCK": "锁定",
   "UNLOCK": "解锁",
   "SAVE_CFG": "保存",

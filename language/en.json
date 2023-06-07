@@ -16,6 +16,7 @@
   "CHAR_DP_LB": "please select",
   "REFRESH_CHAR": "refresh",
   "LOAD_CHAR": "load char",
+  "TURNS": "generate turn",
   "LOCK": "lock",
   "UNLOCK": "unlock",
   "SAVE_CFG": "save",
