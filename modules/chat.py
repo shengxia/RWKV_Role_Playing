@@ -34,6 +34,8 @@ class Chat:
     self.model_utils.all_state.clear()
     self.user_chat = user
     self.bot_chat = bot
+    self.user = user
+    self.bot = bot
     self.action_start = action_start
     self.action_end = action_end
     self.greeting = greeting
@@ -235,11 +237,11 @@ class Chat:
     return chat_str
   
   def __get_init_prompt(self, bot, bot_persona, user, example_message):
-    em = example_message.replace('<bot>:', self.bot + ':').replace('<user>:', self.user + ':').replace('<bot>', bot).replace('<user>', user)
-    if self.lang == 'en':
-      init_prompt = f"Please act as {bot} and chat with me, {bot} call me {user}. {bot_persona}\n\n{em}"
-    else:
-      init_prompt = f"{self.user}: 请你扮演{bot}与我进行对话，{bot}称呼我为{user}。{bot_persona}\n\n{em}"
+    em = example_message.replace('<bot>', bot).replace('<user>', user)
+    init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
+    if em:
+      init_prompt += f'\n\n{em}'
+    init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}.'
     return init_prompt
 
   def get_test_data(self):
