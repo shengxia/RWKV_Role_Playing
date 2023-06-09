@@ -21,6 +21,7 @@ class ModelUtils:
   DOUBLE_END_OF_LINE = 261
   CHN_COMMA = 19137
   CHN_PERIOD_END = 28329
+  NEG_INF = -999999999
   all_state = {}
   
   def __init__(self, args):
@@ -69,16 +70,19 @@ class ModelUtils:
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       if turns > 1:
         if token == self.DOUBLE_END_OF_LINE:
-          out[self.DOUBLE_END_OF_LINE] = -999999999
-          out[self.END_OF_LINE] = -999999999
+          out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
+          out[self.END_OF_LINE] = self.NEG_INF
           turns -= 1
           continue
         if token == self.CHN_PERIOD_END:
-          token = self.CHN_COMMA
+          out[self.CHN_PERIOD_END] = self.NEG_INF
+          out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
+          out[self.END_OF_LINE] = self.NEG_INF
           turns -= 1
+          continue
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
-      out[self.END_OF_TEXT] = -999999999
+      out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
