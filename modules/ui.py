@@ -115,8 +115,8 @@ class UI:
     self.lock_flag_role = not self.lock_flag_role
     return return_arr
 
-  def __send_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, action_front):
-    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, turns)
+  def __send_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, min_len, action_front):
+    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, turns, min_len)
     show_label = False
     interactive = True
     # if self.chat_model.check_token_count():
@@ -167,6 +167,7 @@ class UI:
     if not flag:
       text = self.language_conf['UNLOCK']
     return_arr = (
+      gr.Slider.update(interactive=flag), 
       gr.Slider.update(interactive=flag), 
       gr.Slider.update(interactive=flag), 
       gr.Slider.update(interactive=flag), 
@@ -229,6 +230,7 @@ class UI:
               with gr.Column(min_width=100):
                 load_char_btn = gr.Button(self.language_conf['LOAD_CHAR'])
             turns = gr.Slider(minimum=1, maximum=10, step=1, interactive=False, label=self.language_conf['TURNS'])
+            min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label='最小回复长度（0为不控制）')
             top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
             top_k = gr.Slider(minimum=0, maximum=200, step=1, interactive=False, label='Top K')
             temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
@@ -257,14 +259,14 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns]
+      input_list = [message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, min_len]
       output_list = [message, action, chatbot]
       char_input_list = [user, bot, action_start, action_end, greeting, bot_persona, example_message, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
-      save_conf.click(self.__save_config_role, inputs=input_list[2:-1])
+      save_conf.click(self.__save_config_role, inputs=input_list[2:-2])
       # message.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       # action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       # submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)      
@@ -272,9 +274,9 @@ class UI:
       action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
       submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
-      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
+      save_char_btn.click(self.__save_char, inputs=char_input_list[:-2], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-1], outputs=[message, action])
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-2], outputs=[message, action])
       unlock_btn.click(self.__unlock_role_param, outputs=input_list[2:] + [unlock_btn])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])

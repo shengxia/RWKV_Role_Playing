@@ -14,11 +14,10 @@ class ModelUtils:
   model_path = None
   strategy = None
   CHUNK_LEN = 100
-  CHAT_LEN_SHORT = 200
-  CHAT_LEN_LONG = 500
   END_OF_TEXT = 0
   END_OF_LINE = 11
   DOUBLE_END_OF_LINE = 261
+  CHN_PERIOD = 10080
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
   AVOID_REPEAT = '，：？！'
@@ -72,6 +71,10 @@ class ModelUtils:
     occurrence = {}
     turns = chat_param['turns']
     for i in range(999):
+      if chat_param['min_len'] >0 and i < chat_param['min_len']:
+        out[self.CHN_PERIOD_END] = self.NEG_INF
+        out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
+        out[self.END_OF_LINE] = self.NEG_INF
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
@@ -82,11 +85,11 @@ class ModelUtils:
           turns -= 1
           continue
         if token == self.CHN_PERIOD_END:
+          token = self.CHN_PERIOD
           out[self.CHN_PERIOD_END] = self.NEG_INF
           out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
           out[self.END_OF_LINE] = self.NEG_INF
           turns -= 1
-          continue
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
@@ -99,13 +102,14 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns=1):
+  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns=1, min_len=0):
     chat_param = {
       'top_p': top_p,
       'top_k': top_k,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
-      'turns': turns
+      'turns': turns,
+      'min_len': min_len
     }
     return chat_param

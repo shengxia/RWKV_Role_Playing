@@ -78,17 +78,17 @@ class Chat:
       os.remove(save_file)
     return None, None, self.__generate_cai_chat_html()
   
-  def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns):
+  def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, min_len):
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
     except:
       return '', self.__generate_cai_chat_html()
     new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty, turns)
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, min_len)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
-  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, turns):
+  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, turns, min_len):
     message = message.strip().replace('\r\n','\n') if message else ''
     action = action.strip().replace('\r\n','\n') if action else ''
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
@@ -104,7 +104,7 @@ class Chat:
     new += f"{msg}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     self.chatbot += [[msg, None]]
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty, turns)
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, min_len)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
