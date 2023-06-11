@@ -19,9 +19,10 @@ class ModelUtils:
   END_OF_TEXT = 0
   END_OF_LINE = 11
   DOUBLE_END_OF_LINE = 261
-  CHN_COMMA = 19137
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
+  AVOID_REPEAT = '，：？！'
+  AVOID_REPEAT_TOKENS = []
   all_state = {}
   
   def __init__(self, args):
@@ -31,6 +32,10 @@ class ModelUtils:
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
     self.pipeline = PIPELINE(self.model, "rwkv_vocab_v20230424")
+    for i in self.AVOID_REPEAT:
+      dd = self.pipeline.encode(i)
+      assert len(dd) == 1
+      self.AVOID_REPEAT_TOKENS += dd
 
   def run_rnn(self, model_tokens, model_state, tokens):
     tokens = [int(x) for x in tokens]
@@ -38,6 +43,8 @@ class ModelUtils:
     while len(tokens) > 0:
       out, model_state = self.model.forward(tokens[:self.CHUNK_LEN], model_state)
       tokens = tokens[self.CHUNK_LEN:]
+    if model_tokens[-1] in self.AVOID_REPEAT_TOKENS:
+      out[model_tokens[-1]] = self.NEG_INF
     return out, model_tokens, model_state
   
   def save_all_stat(self, srv, name, last_out, model_tokens, model_state):

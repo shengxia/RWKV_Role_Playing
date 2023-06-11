@@ -119,9 +119,9 @@ class UI:
     text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, turns)
     show_label = False
     interactive = True
-    if self.chat_model.check_token_count():
-      show_label = True
-      interactive = False
+    # if self.chat_model.check_token_count():
+    #   show_label = True
+    #   interactive = False
     result = (
       text,
       action_text,
@@ -149,7 +149,6 @@ class UI:
       gr.Button.update(interactive=True)
     )
     return result
-
 
   def __reset_chatbot(self):
     message, action, chatbot = self.chat_model.reset_bot()
@@ -266,9 +265,12 @@ class UI:
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       save_conf.click(self.__save_config_role, inputs=input_list[2:-1])
-      message.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      # message.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      # action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      # submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)      
+      message.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
+      action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
+      submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
