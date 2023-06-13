@@ -274,7 +274,7 @@ class UI:
       action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
       submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
-      save_char_btn.click(self.__save_char, inputs=char_input_list[:-2], outputs=[char_dropdown])
+      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-2], outputs=[message, action])
       unlock_btn.click(self.__unlock_role_param, outputs=input_list[2:] + [unlock_btn])

@@ -238,6 +238,7 @@ class Chat:
   
   def __get_init_prompt(self, bot, bot_persona, user, example_message):
     em = example_message.replace('<bot>', bot).replace('<user>', user)
+    # em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
     init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
     if em:
       init_prompt += f'\n\n{em}'
