@@ -48,7 +48,7 @@ class UI:
       self.__save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty)
   
   # 保存角色
-  def __save_char(self, user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message=''):
+  def __save_char(self, user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
     with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
       char = {
         'user': user, 
@@ -57,7 +57,8 @@ class UI:
         'action_end': action_end,
         'greeting': greeting, 
         'bot_persona': bot_persona, 
-        'example_message': example_message
+        'example_message': example_message,
+        'use_qa': use_qa
       }
       json.dump(char, f, indent=2, ensure_ascii=False)
     char_list = self.__get_json_files(self.char_path)
@@ -69,12 +70,15 @@ class UI:
       raise gr.Error(self.language_conf['LOAD_CHAR_ERROR'])
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    for key in ['user', 'bot', 'action_start', 'action_end', 'greeting', 'bot_persona', 'example_message']:
+    for key in ['user', 'bot', 'action_start', 'action_end', 'greeting', 'bot_persona', 'example_message', 'use_qa']:
       if key not in char.keys():
-        char[key] = ''
+        if key == 'use_qa':
+          char[key] = False
+        else:
+          char[key] = ''
     chatbot = self.chat_model.load_init_prompt(char['user'], char['bot'], char['action_start'], 
                                                char['action_end'], char['greeting'], char['bot_persona'], 
-                                               char['example_message'])
+                                               char['example_message'], char['use_qa'])
     return_arr = (
       char['user'], 
       char['bot'], 
@@ -83,6 +87,7 @@ class UI:
       char['greeting'], 
       char['bot_persona'],
       char['example_message'],
+      char['use_qa'],
       chatbot, 
       gr.Textbox.update(interactive=True), 
       gr.Textbox.update(interactive=True), 
@@ -247,6 +252,7 @@ class UI:
           with gr.Column():
             user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
             bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
+            use_qa = gr.Checkbox(label='用Question和Answer代替你和角色的名字')
             with gr.Row():
               with gr.Column(min_width=100):
                 action_start = gr.Textbox(placeholder=self.language_conf['AC_START_LB'], label=self.language_conf['AC_START_LB'])
@@ -261,7 +267,7 @@ class UI:
       
       input_list = [message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, turns, min_len]
       output_list = [message, action, chatbot]
-      char_input_list = [user, bot, action_start, action_end, greeting, bot_persona, example_message, chatbot]
+      char_input_list = [user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)

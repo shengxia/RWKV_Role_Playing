@@ -28,14 +28,18 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
-  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message):
+  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa):
     model_tokens = []
     model_state = None
     self.model_utils.all_state.clear()
     self.user_chat = user
     self.bot_chat = bot
-    self.user = user
-    self.bot = bot
+    if not use_qa:
+      self.user = user
+      self.bot = bot
+    else:
+      self.user = 'Question'
+      self.bot = 'Answer'
     self.action_start = action_start
     self.action_end = action_end
     self.greeting = greeting
@@ -237,8 +241,7 @@ class Chat:
     return chat_str
   
   def __get_init_prompt(self, bot, bot_persona, user, example_message):
-    em = example_message.replace('<bot>', bot).replace('<user>', user)
-    # em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
+    em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
     init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
     if em:
       init_prompt += f'\n\n{em}'
