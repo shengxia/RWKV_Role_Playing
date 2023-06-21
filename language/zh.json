@@ -16,7 +16,6 @@
   "CHAR_DP_LB": "请选择角色",
   "REFRESH_CHAR": "刷新角色列表",
   "LOAD_CHAR": "载入角色",
-  "TURNS": "生成次数",
   "LOCK": "锁定",
   "UNLOCK": "解锁",
   "SAVE_CFG": "保存",
@@ -38,5 +37,8 @@
   "TOKEN_NOW": "当前token",
   "OUTPUT": "输出",
   "TOKEN_LAST": "上一次token",
-  "GET_TOKEN": "查看token"
+  "GET_TOKEN": "查看token",
+  "FREE_MODE": "自由模式",
+  "MIN_LEN": "最小回复长度（0为不控制）",
+  "QA_REPLACE": "用Question和Answer代替你和角色的名字"
 }
