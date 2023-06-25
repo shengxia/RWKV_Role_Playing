@@ -2,8 +2,7 @@ from modules.model_utils import ModelUtils
 from pathlib import Path
 import os, json, datetime
 import pickle
-import copy, re, gc
-import torch
+import copy, re
 
 class Chat:
   
@@ -11,8 +10,10 @@ class Chat:
   srv_chat = 'chat_server'
   chat_css = ''
   chatbot = []
-  user = ''
-  bot = ''
+  user = 'Question'
+  user_chat = ''
+  bot = 'Answer'
+  bot_chat = ''
   action_start = ''
   action_end = ''
   greeting = ''
@@ -26,26 +27,31 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
-  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message):
-    gc.collect()
-    torch.cuda.empty_cache()
+  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, as_default=False):
     model_tokens = []
     model_state = None
     self.model_utils.all_state.clear()
-    self.user = user
-    self.bot = bot
+    self.chatbot = []
+    self.user_chat = user
+    self.bot_chat = bot
+    if not use_qa:
+      self.user = user
+      self.bot = bot
+    else:
+      self.user = 'Question'
+      self.bot = 'Answer'
     self.action_start = action_start
     self.action_end = action_end
     self.greeting = greeting
     self.bot_persona = bot_persona
-    init_prompt = self.__get_init_prompt(bot, bot_persona, user, example_message)
+    init_prompt = self.__get_init_prompt(bot, bot_persona, user, example_message, as_default)
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
     init_prompt = '\n'.join(init_prompt).strip()
     if greeting:
-      init_prompt += f"\n\n{bot}: {greeting}\n\n"
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(init_prompt)))
+      init_prompt += f"\n\n{self.bot}: {greeting}\n\n"
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat('', 'chat_init', out, model_tokens, model_state)
     if os.path.exists(f'save/{bot}.sav'):
       data = self.__load_chat()
@@ -54,15 +60,16 @@ class Chat:
         self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
       self.chatbot = data['chatbot']
     else:
-      self.chatbot = [[None, greeting]]
+      if greeting:
+        self.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     return self.__generate_cai_chat_html()
   
   def reset_bot(self):
-    log_name = f'./log/{self.bot}.json'
+    log_name = f'./log/{self.bot_chat}.json'
     if os.path.exists(log_name):
-      os.makedirs(f'./log/{self.bot}', exist_ok=True)
-      log_bk_name = f'./log/{self.bot}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
+      os.makedirs(f'./log/{self.bot_chat}', exist_ok=True)
+      log_bk_name = f'./log/{self.bot_chat}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
       os.rename(log_name, log_bk_name)
     out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
@@ -70,28 +77,28 @@ class Chat:
       self.model_utils.remove_stat(self.srv_chat, 'chat_pre')
     except:
       pass
-    self.chatbot = [[None, self.greeting]]
-    save_file = f'save/{self.bot}.sav'
+    if self.greeting:
+      self.chatbot = [[None, self.greeting]]
+    else:
+      self.chatbot = []
+    save_file = f'save/{self.bot_chat}.sav'
     if os.path.exists(save_file):
       os.remove(save_file)
     return None, None, self.__generate_cai_chat_html()
   
-  def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len):
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
     except:
       return '', self.__generate_cai_chat_html()
     new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
+    chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
-  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front):
+  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message):
     message = message.strip().replace('\r\n','\n') if message else ''
     action = action.strip().replace('\r\n','\n') if action else ''
-    out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
-    new = f"{self.user}: "
     msg = f"{message}"
     if action_front:
       if action:
@@ -99,11 +106,25 @@ class Chat:
     else:
       if action:
         msg += f"{self.action_start}{action}{self.action_end}"
-    new += f"{msg}\n\n{self.bot}:"
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    self.chatbot += [[msg, None]]
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
-    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
+    if replace_message:
+      try:
+        out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
+      except:
+        return '', '', self.__generate_cai_chat_html()
+      new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}: {msg}\n\n"
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+      self.chatbot[-1][1] = msg
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
+      return '', '', self.__generate_cai_chat_html()
+    else:
+      out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+      self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
+      new = f"{self.user}: "
+      new += f"{msg}\n\n{self.bot}:"
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+      self.chatbot += [[msg, None]]
+      chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
+      return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
     new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
@@ -113,11 +134,11 @@ class Chat:
     self.__save_chat()
     return self.__generate_cai_chat_html()
     
-  def get_prompt(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
+  def get_prompt(self, top_p, tau, temperature, presence_penalty, frequency_penalty):
     out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
     new = f"{self.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty)
+    chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     pos_arr = list(self.__find_all_chat(new_prompt[0]))
     chat_action_data = self.__format_chat_action(pos_arr, new_prompt[0])
@@ -125,15 +146,19 @@ class Chat:
     return chat, action
   
   def clear_last(self):
-    if(len(self.chatbot) == 1):
-      return self.__generate_cai_chat_html(), ''
-    message = self.chatbot[-1][0]
-    self.chatbot = self.chatbot[:-1]
-    if len(self.chatbot) < 2:
+    n = 1
+    if(len(self.chatbot) == 0):
+      return self.__generate_cai_chat_html(), '', ''
+    if not self.chatbot[0][0]:
+      n += 1
+      if(len(self.chatbot) == 1):
+        return self.__generate_cai_chat_html(), '', ''
+    messages = self.chatbot.pop()    
+    if len(self.chatbot) < n:
       out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
       self.model_utils.remove_stat(self.srv_chat, 'chat_pre')
-    elif len(self.chatbot) < 3:
+    elif len(self.chatbot) < n + 1:
       out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
       out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
@@ -143,19 +168,19 @@ class Chat:
       self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
       chat_str = self.__get_chatbot_str(self.chatbot[1:-1])
       out, model_tokens, model_state = self.model_utils.load_all_stat('', 'chat_init')
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str)))
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
       self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     self.__save_chat()
     self.__save_log()
-    pos_arr = list(self.__find_all_chat(message))
-    chat_action_data = self.__format_chat_action(pos_arr, message)
+    pos_arr = list(self.__find_all_chat(messages[0]))
+    chat_action_data = self.__format_chat_action(pos_arr, messages[0])
     chat, action = self.__get_chat_action(chat_action_data)
     return self.__generate_cai_chat_html(), chat, action
   
   def __save_log(self):
     os.makedirs('log', exist_ok=True)
     dict_list = [{'input': q, 'output': a} for q, a in self.chatbot]
-    with open(f'./log/{self.bot}.json', 'w', encoding='utf-8') as f:
+    with open(f'./log/{self.bot_chat}.json', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
   def __save_chat(self):
@@ -176,23 +201,23 @@ class Chat:
       "model_state_pre": model_state_pre,
       "chatbot": self.chatbot
     }
-    with open(f'save/{self.bot}.sav', 'wb') as f:
+    with open(f'save/{self.bot_chat}.sav', 'wb') as f:
       pickle.dump(data, f)
 
   def __load_chat(self):
-    with open(f'save/{self.bot}.sav', 'rb') as f:
+    with open(f'save/{self.bot_chat}.sav', 'rb') as f:
       data = pickle.load(f)
     return data
   
   def __generate_cai_chat_html(self):
     output = f'<style>{self.chat_css}</style><div class="chat" id="chat">'
-    img_bot = f'<img src="file/chars/{self.bot}.png">' if Path(f"chars/{self.bot}.png").exists() else ''
+    img_bot = f'<img src="file/chars/{self.bot_chat}.png">' if Path(f"chars/{self.bot_chat}.png").exists() else ''
     chatbot = copy.deepcopy(self.chatbot)
     chatbot.reverse()
     for row in chatbot:
       pos_arr = list(self.__find_all_chat(row[1]))
       chat_action_data = self.__format_chat_action(pos_arr, row[1])
-      msg = self.__format_chat_html(chat_action_data)
+      msg = self.__format_chat_html(chat_action_data).replace('\n', '<br>')
       output += f"""
         <div class="message message_c">
           <div class="circle-bot">
@@ -200,7 +225,7 @@ class Chat:
           </div>
           <div class="text_c">
             <div class="username">
-              {self.bot}
+              {self.bot_chat}
             </div>
             <div class="message-body message-body-c">
               {msg}
@@ -211,12 +236,12 @@ class Chat:
       if row[0] != None:
         pos_arr = list(self.__find_all_chat(row[0]))
         chat_action_data = self.__format_chat_action(pos_arr, row[0])
-        msg = self.__format_chat_html(chat_action_data)
+        msg = self.__format_chat_html(chat_action_data).replace('\n', '<br>')
         output += f"""
           <div class="message message_m">
             <div class="text_m">
               <div class="username username-m">
-                {self.user}
+                {self.user_chat}
               </div>
               <div class="message-body message-body-m">
                 {msg}
@@ -234,12 +259,15 @@ class Chat:
       chat_str += f'{self.bot}: {row[1]}\n\n'
     return chat_str
   
-  def __get_init_prompt(self, bot, bot_persona, user, example_message):
-    em = example_message.replace('<bot>', bot).replace('<user>', user)
-    if self.lang == 'en':
-      init_prompt = f"You are {bot}, {bot_persona}\n\n{em}"
+  def __get_init_prompt(self, bot, bot_persona, user, example_message, as_default=False):
+    if not as_default:
+      em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
+      init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
+      if em:
+        init_prompt += f'\n\n{em}'
+      init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}.'
     else:
-      init_prompt = f"你是{bot}，{bot_persona}\n\n{em}"
+      init_prompt = "Question: hi\n\nAnswer: Hi. I am your assistant and I will provide expert full response in full details. Please feel free to ask any question and I will always answer it.\n\n"
     return init_prompt
 
   def get_test_data(self):
@@ -254,7 +282,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 4096:
+    if len(data[1]) < 3000:
       return False
     return True
 
@@ -269,11 +297,11 @@ class Chat:
         break
       chat_str_pre = f'{self.bot}: {row[1]}\n\n' + chat_str_pre
       chat_str_pre = f'{self.user}: {row[0]}\n\n' + chat_str_pre
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str_pre)))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str_pre))
     self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
     chat_str += f'{self.user}: {self.chatbot[-1][0]}\n\n'
     chat_str += f'{self.bot}: {self.chatbot[-1][1]}\n\n'
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.fix_tokens(self.model_utils.pipeline.encode(chat_str)))
+    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.process_flag = False
 

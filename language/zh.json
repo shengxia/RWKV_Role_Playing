@@ -37,5 +37,8 @@
   "TOKEN_NOW": "当前token",
   "OUTPUT": "输出",
   "TOKEN_LAST": "上一次token",
-  "GET_TOKEN": "查看token"
+  "GET_TOKEN": "查看token",
+  "FREE_MODE": "自由模式",
+  "MIN_LEN": "最小回复长度（0为不控制）",
+  "QA_REPLACE": "用Question和Answer代替你和角色的名字"
 }
