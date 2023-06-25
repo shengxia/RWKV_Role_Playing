@@ -3,7 +3,6 @@ from pathlib import Path
 import os, json, datetime
 import pickle
 import copy, re
-import difflib
 
 class Chat:
   
@@ -97,12 +96,9 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
-  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len):
+  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message):
     message = message.strip().replace('\r\n','\n') if message else ''
     action = action.strip().replace('\r\n','\n') if action else ''
-    out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
-    new = f"{self.user}: "
     msg = f"{message}"
     if action_front:
       if action:
@@ -110,11 +106,25 @@ class Chat:
     else:
       if action:
         msg += f"{self.action_start}{action}{self.action_end}"
-    new += f"{msg}\n\n{self.bot}:"
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    self.chatbot += [[msg, None]]
-    chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
-    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
+    if replace_message:
+      try:
+        out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat_pre')
+      except:
+        return '', '', self.__generate_cai_chat_html()
+      new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}: {msg}\n\n"
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+      self.chatbot[-1][1] = msg
+      self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
+      return '', '', self.__generate_cai_chat_html()
+    else:
+      out, model_tokens, model_state = self.model_utils.load_all_stat(self.srv_chat, 'chat')
+      self.model_utils.save_all_stat(self.srv_chat, 'chat_pre', out, model_tokens, model_state)
+      new = f"{self.user}: "
+      new += f"{msg}\n\n{self.bot}:"
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+      self.chatbot += [[msg, None]]
+      chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
+      return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
     new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)

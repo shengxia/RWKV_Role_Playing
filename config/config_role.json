@@ -1,7 +1,7 @@
 {
   "top_p": 0.6,
-  "tau": 0.2,
-  "temperature": 0.4,
+  "tau": 0,
+  "temperature": 1.5,
   "presence": 0.3,
   "frequency": 0.3
 }
