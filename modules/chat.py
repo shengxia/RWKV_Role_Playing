@@ -10,14 +10,16 @@ class Chat:
   srv_chat = 'chat_server'
   chat_css = ''
   chatbot = []
-  user = 'Question'
+  user = 'User'
   user_chat = ''
-  bot = 'Answer'
+  bot = 'Assistant'
   bot_chat = ''
   action_start = ''
   action_end = ''
   greeting = ''
   bot_persona = ''
+  action_start_token = None
+  action_end_token = None
   process_flag = False
   lang = None
 
@@ -38,8 +40,8 @@ class Chat:
       self.user = user
       self.bot = bot
     else:
-      self.user = 'Question'
-      self.bot = 'Answer'
+      self.user = 'User'
+      self.bot = 'Assistant'
     self.action_start = action_start
     self.action_end = action_end
     self.greeting = greeting
@@ -93,7 +95,10 @@ class Chat:
       return '', self.__generate_cai_chat_html()
     new = f"{self.user}: {self.chatbot[-1][0]}\n\n{self.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
+    chat_param = self.model_utils.format_chat_param(
+      top_p, tau, temperature, presence_penalty, frequency_penalty, 
+      min_len, self.action_start_token, self.action_end_token
+    )
     return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
   
   def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message):
@@ -123,7 +128,10 @@ class Chat:
       new += f"{msg}\n\n{self.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.chatbot += [[msg, None]]
-      chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, min_len)
+      chat_param = self.model_utils.format_chat_param(
+        top_p, tau, temperature, presence_penalty, frequency_penalty, 
+        min_len, self.action_start_token, self.action_end_token
+      )
       return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
   
   def gen_msg(self, out, chat_param, model_tokens, model_state):
@@ -261,13 +269,16 @@ class Chat:
   
   def __get_init_prompt(self, bot, bot_persona, user, example_message, as_default=False):
     if not as_default:
+      if self.action_start and self.action_start in example_message and self.action_end in example_message:
+        self.action_start_token = self.model_utils.pipeline.encode(f' {self.action_start}')
+        self.action_end_token = self.model_utils.pipeline.encode(self.action_end)
       em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
       init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
       if em:
         init_prompt += f'\n\n{em}'
       init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}.'
     else:
-      init_prompt = "Question: hi\n\nAnswer: Hi. I am your assistant and I will provide expert full response in full details. Please feel free to ask any question and I will always answer it.\n\n"
+      init_prompt = "User: hi\n\nAssistant: Hi. I am your assistant and I will provide expert full response in full details. Please feel free to ask any question and I will always answer it.\n\n"
     return init_prompt
 
   def get_test_data(self):
@@ -282,7 +293,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 3000:
+    if len(data[1]) < 5000:
       return False
     return True
 
