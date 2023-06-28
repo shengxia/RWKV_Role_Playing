@@ -279,7 +279,7 @@ class Chat:
       init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
       if em:
         init_prompt += f'\n\n{em}'
-      init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}.'
+        init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}.'
     else:
       init_prompt = "User: hi\n\nAssistant: Hi. I am your assistant and I will provide expert full response in full details. Please feel free to ask any question and I will always answer it.\n\n"
     return init_prompt
