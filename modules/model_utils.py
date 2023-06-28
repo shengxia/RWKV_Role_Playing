@@ -70,7 +70,6 @@ class ModelUtils:
     torch.cuda.empty_cache()
     begin = len(model_tokens)
     out_last = begin
-    occurrence = {}
     for i in range(999):
       if i == 0 and chat_param['action_start_token']:
         out[chat_param['action_start_token']] = 5
@@ -80,14 +79,15 @@ class ModelUtils:
         out[self.END_OF_LINE] = self.NEG_INF    
         if chat_param['action_end_token'] and i < chat_param['min_len'] / 2:
           out[chat_param['action_end_token']] = self.NEG_INF    
+      occurrence = {}
+      for token in model_tokens[out_last - 100:]:
+        if token in [self.CHN_PERIOD_END, self.DOUBLE_END_OF_LINE, self.END_OF_LINE, 
+                     chat_param['action_end_token'], chat_param['action_start_token']]:
+          continue
+        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      if not chat_param['tau']:
-        token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
-      else:
-        token = self.sample_typical(out, chat_param['temperature'], chat_param['tau'])
-      for o in occurrence:
-        occurrence[o] *= 0.996
+      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
@@ -100,10 +100,9 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len=0, action_start_token=None, action_end_token=None):
+  def format_chat_param(self, top_p, temperature, presence_penalty, frequency_penalty, min_len=0, action_start_token=None, action_end_token=None):
     chat_param = {
       'top_p': top_p,
-      'tau': tau,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
@@ -113,18 +112,3 @@ class ModelUtils:
     }
     return chat_param
   
-  def sample_typical(self, logits, temp, tau):
-    probs = F.softmax(logits.float(), dim=-1)
-    logits = -torch.log(probs)
-    entropy = torch.nansum(logits * probs, dim=-1, keepdim=True)
-    logits = torch.abs(logits - entropy)
-    sorted_ids = torch.argsort(logits)
-    sorted_logits = logits[sorted_ids]
-    sorted_probs = probs[sorted_ids]
-    cumulative_probs = torch.cumsum(sorted_probs, dim=-1).cpu().numpy()
-    cutoff = np.sum(cumulative_probs < tau)
-    probs[logits > sorted_logits[cutoff]] = 0
-    if temp != 1.0:
-        probs = probs ** (1.0 / temp)
-    out = torch.multinomial(probs, num_samples=1)[0]
-    return int(out)
