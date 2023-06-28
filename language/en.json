@@ -40,5 +40,5 @@
   "GET_TOKEN": "watch",
   "FREE_MODE": "free mode",
   "MIN_LEN": "reply min length(set 0 to disable this item)",
-  "QA_REPLACE": "use \"Question\" and \"Answer\" to replace character's and your name"
+  "QA_REPLACE": "use \"User\" and \"Assistant\" to replace character's and your name"
 }

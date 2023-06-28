@@ -32,10 +32,9 @@ class UI:
     char_list = self.__get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
   
-  def __save_config(self, f, top_p, tau, temperature, presence_penalty, frequency_penalty):
+  def __save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty):
     config = {
       'top_p': top_p, 
-      'tau': tau, 
       'temperature': temperature, 
       'presence': presence_penalty, 
       'frequency': frequency_penalty
@@ -43,9 +42,9 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.7, tau=0, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
+  def __save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty)
+      self.__save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
   
   # 保存角色
   def __save_char(self, user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
@@ -133,13 +132,13 @@ class UI:
     self.lock_flag_role = not self.lock_flag_role
     return return_arr
 
-  def __send_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, action_front, replace_message):
-    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message)
+  def __send_message(self, message, action, top_p, temperature, presence_penalty, frequency_penalty, min_len, action_front, replace_message):
+    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message)
     show_label = False
     interactive = True
-    # if self.chat_model.check_token_count():
-    #   show_label = True
-    #   interactive = False
+    if self.chat_model.check_token_count():
+      show_label = True
+      interactive = False
     result = (
       text,
       action_text,
@@ -191,7 +190,6 @@ class UI:
       gr.Slider.update(interactive=flag), 
       gr.Slider.update(interactive=flag), 
       gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
       gr.Button.update(value=text)
     )
     return return_arr
@@ -203,7 +201,6 @@ class UI:
     char_list = self.__get_json_files(self.char_path)
     return_arr = (
       configs_role['top_p'], 
-      configs_role['tau'], 
       configs_role['temperature'], 
       configs_role['presence'], 
       configs_role['frequency'], 
@@ -252,7 +249,6 @@ class UI:
               load_default_btn = gr.Button(self.language_conf['FREE_MODE'])
             min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label=self.language_conf['MIN_LEN'])
             top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
-            tau = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='TAU')
             temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
             presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Presence Penalty')
             frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
@@ -280,7 +276,7 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len]
+      input_list = [message, action, top_p, temperature, presence_penalty, frequency_penalty, min_len]
       output_list = [message, action, chatbot]
       char_input_list = [user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -289,12 +285,12 @@ class UI:
       load_default_btn.click(self.__load_default_char, outputs=interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       save_conf.click(self.__save_config_role, inputs=input_list[2:-1])
-      # message.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      # action.submit(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      # submit.click(self.__send_message, inputs=input_list + [action_front], outputs=output_list + interactive_list).then(self.__arrange_token, outputs=interactive_list, show_progress=False)      
-      message.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message])
-      action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message])
-      submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message])
+      message.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)      
+      # message.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message])
+      # action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message])
+      # submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message])
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
@@ -312,7 +308,6 @@ class UI:
 
       reload_list = [
         top_p, 
-        tau, 
         temperature, 
         presence_penalty, 
         frequency_penalty, 
