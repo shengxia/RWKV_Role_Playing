@@ -99,7 +99,8 @@ class Chat:
       top_p, temperature, presence_penalty, frequency_penalty, 
       min_len, self.action_start_token, self.action_end_token
     )
-    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
+    occurrence = self.__get_occurrence(True)
+    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state, occurrence) 
   
   def on_message(self, message, action, top_p, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message):
     message = message.strip().replace('\r\n','\n') if message else ''
@@ -132,10 +133,11 @@ class Chat:
         top_p, temperature, presence_penalty, frequency_penalty, 
         min_len, self.action_start_token, self.action_end_token
       )
-      return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
+      occurrence = self.__get_occurrence()
+      return '', '', self.gen_msg(out, chat_param, model_tokens, model_state, occurrence)
   
-  def gen_msg(self, out, chat_param, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
+  def gen_msg(self, out, chat_param, model_tokens, model_state, occurrence):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence)
     self.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.__save_log()
@@ -362,3 +364,17 @@ class Chat:
         if i[1] == 'action':
           action = i[0]
     return chat, action
+  
+  def __get_occurrence(self, is_pre=False):
+    chatbot = copy.deepcopy(self.chatbot)
+    if is_pre:
+      chatbot = chatbot[:-1]
+    occurrence = {}
+    for i in chatbot:
+      if i[1]:
+        bot_token = self.model_utils.pipeline.encode(i[1])
+        for t in bot_token:
+          for o in occurrence:
+            occurrence[o] *= 0.996 
+          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
+    return occurrence

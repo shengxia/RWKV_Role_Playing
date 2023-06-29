@@ -65,29 +65,25 @@ class ModelUtils:
     n = f'{name}_{srv}'
     del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
     gc.collect()
     torch.cuda.empty_cache()
     begin = len(model_tokens)
     out_last = begin
     for i in range(999):
       if i == 0 and chat_param['action_start_token']:
-        out[chat_param['action_start_token']] = 5
+        out[chat_param['action_start_token']] = 10
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
         out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
         out[self.END_OF_LINE] = self.NEG_INF    
         if chat_param['action_end_token'] and i < chat_param['min_len'] / 2:
           out[chat_param['action_end_token']] = self.NEG_INF    
-      occurrence = {}
-      for token in model_tokens[out_last - 100:]:
-        if token in [self.CHN_PERIOD_END, self.DOUBLE_END_OF_LINE, self.END_OF_LINE, 
-                     chat_param['action_end_token'], chat_param['action_start_token']]:
-          continue
-        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
+      for o in occurrence:
+        occurrence[o] *= 0.996 
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
