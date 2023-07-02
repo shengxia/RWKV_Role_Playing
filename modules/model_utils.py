@@ -25,6 +25,7 @@ class ModelUtils:
   AVOID_REPEAT = '，：？！'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
+  penalty_decay = 0.996
   
   def __init__(self, args):
     self.model_path = args.model
@@ -83,7 +84,7 @@ class ModelUtils:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
       for o in occurrence:
-        occurrence[o] *= 0.996 
+        occurrence[o] *= self.penalty_decay
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
