@@ -260,7 +260,7 @@ class Chat:
           </div>
         """
     output += "</div>"
-    return output
+    return output.replace('<br><br>', '<br>').replace('<br><br>', '<br>')
   
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
@@ -300,7 +300,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 5000:
+    if len(data[1]) < 4000:
       return False
     return True
 
