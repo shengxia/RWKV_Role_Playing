@@ -99,7 +99,8 @@ class Chat:
       top_p, temperature, presence_penalty, frequency_penalty, 
       min_len, self.action_start_token, self.action_end_token
     )
-    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state) 
+    occurrence = self.__get_occurrence(True)
+    return '', '', self.gen_msg(out, chat_param, model_tokens, model_state, occurrence) 
   
   def on_message(self, message, action, top_p, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message):
     message = message.strip().replace('\r\n','\n') if message else ''
@@ -132,10 +133,11 @@ class Chat:
         top_p, temperature, presence_penalty, frequency_penalty, 
         min_len, self.action_start_token, self.action_end_token
       )
-      return '', '', self.gen_msg(out, chat_param, model_tokens, model_state)
+      occurrence = self.__get_occurrence()
+      return '', '', self.gen_msg(out, chat_param, model_tokens, model_state, occurrence)
   
-  def gen_msg(self, out, chat_param, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
+  def gen_msg(self, out, chat_param, model_tokens, model_state, occurrence):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence)
     self.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat(self.srv_chat, 'chat', out, model_tokens, model_state)
     self.__save_log()
@@ -258,7 +260,7 @@ class Chat:
           </div>
         """
     output += "</div>"
-    return output
+    return output.replace('<br><br>', '<br>').replace('<br><br>', '<br>')
   
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
@@ -276,10 +278,12 @@ class Chat:
         self.action_start_token = None
         self.action_end_token = None
       em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
-      init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}. {bot_persona}"
+      init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}."
       if em:
         init_prompt += f'\n\n{em}'
-      init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}.'
+        init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}. {bot_persona}'
+      else:
+        init_prompt += f" {bot_persona}"
     else:
       init_prompt = "User: hi\n\nAssistant: Hi. I am your assistant and I will provide expert full response in full details. Please feel free to ask any question and I will always answer it.\n\n"
     return init_prompt
@@ -296,7 +300,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat(self.srv_chat, 'chat')
-    if len(data[1]) < 5000:
+    if len(data[1]) < 4000:
       return False
     return True
 
@@ -362,3 +366,17 @@ class Chat:
         if i[1] == 'action':
           action = i[0]
     return chat, action
+  
+  def __get_occurrence(self, is_pre=False):
+    chatbot = copy.deepcopy(self.chatbot)
+    if is_pre:
+      chatbot = chatbot[:-1]
+    occurrence = {}
+    for i in chatbot:
+      if i[1]:
+        bot_token = self.model_utils.pipeline.encode(i[1])
+        for t in bot_token:
+          for o in occurrence:
+            occurrence[o] *= self.model_utils.penalty_decay
+          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
+    return occurrence
