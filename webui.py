@@ -23,7 +23,6 @@ from modules.ui import UI
 if __name__ == "__main__":
   model_util = ModelUtils(cmd_opts)
   model_util.load_model()
-  ui = UI(model_util, cmd_opts.lang)
   ui = UI(model_util, cmd_opts.lang, cmd_opts.muti_user)
   app = ui.create_ui()
   app.queue(concurrency_count=5, max_size=64).launch(
