@@ -8,6 +8,7 @@ parser.add_argument("--cuda_on", type=str, default="0", help="RWKV_CUDA_ON value
 parser.add_argument("--jit_on", type=str, default="1", help="RWKV_JIT_ON value")
 parser.add_argument("--share", action="store_true", help="use gradio share")
 parser.add_argument("--lang", type=str, default="zh", help="zh: Chinese; en: English")
+parser.add_argument("--muti_user", action="store_true", help="support mutiuser")
 cmd_opts = parser.parse_args()
 
 import os
@@ -23,6 +24,7 @@ if __name__ == "__main__":
   model_util = ModelUtils(cmd_opts)
   model_util.load_model()
   ui = UI(model_util, cmd_opts.lang)
+  ui = UI(model_util, cmd_opts.lang, cmd_opts.muti_user)
   app = ui.create_ui()
   app.queue(concurrency_count=5, max_size=64).launch(
     server_name="0.0.0.0" if cmd_opts.listen else None, 
