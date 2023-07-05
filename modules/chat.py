@@ -277,13 +277,14 @@ class Chat:
       else:
         self.action_start_token = None
         self.action_end_token = None
-      em = example_message.replace('<bot>:', f"{self.bot}:").replace('<user>:', f"{self.user}:").replace('<bot>', bot).replace('<user>', user)
+      em = example_message.replace('<bot>', bot).replace('<user>', user)
       init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}."
+      init_prompt_part2 = f"根据以下描述来扮演{bot}和我对话，在对话中加入描述角色感情和身体动作等内容，促进对话的进展，这些描述要文采斐然且合理。\n"
       if em:
-        init_prompt += f'\n\n{em}'
-        init_prompt += f'\n\nThe following is another coherent verbose detailed conversation between {user} and {bot}. {bot_persona}'
+        init_prompt += f'\n\n{em}\n\n{init_prompt_part2}'
       else:
-        init_prompt += f" {bot_persona}"
+        init_prompt = f'{init_prompt_part2}'
+      init_prompt += f" \n{bot_persona}"
     else:
       init_prompt = "User: hi\n\nAssistant: Hi. I am your assistant and I will provide expert full response in full details. Please feel free to ask any question and I will always answer it.\n\n"
     return init_prompt
