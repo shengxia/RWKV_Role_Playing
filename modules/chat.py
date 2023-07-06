@@ -1,6 +1,6 @@
 from modules.model_utils import ModelUtils
 from pathlib import Path
-import os, json, datetime
+import os, json
 import pickle
 import copy, re
 import uuid
@@ -264,7 +264,7 @@ class Chat:
         all_state['action_end_token'] = None
       em = example_message.replace('<bot>', bot).replace('<user>', user)
       init_prompt = f"The following is a coherent verbose detailed conversation between {user} and {bot}."
-      init_prompt_part2 = f"根据以下描述来扮演{bot}和我对话，在对话中加入描述角色感情和身体动作等内容，促进对话的进展，这些描述要文采斐然且合理。\n"
+      init_prompt_part2 = f"根据以下描述来扮演{bot}和我对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n"
       if em:
         init_prompt += f'\n\n{em}\n\n{init_prompt_part2}'
       else:

@@ -11,8 +11,10 @@ class UI:
   language_path = './language/'
   lock_flag_role = True
   language_conf = None
+  muti_user = False
 
   def __init__(self, model_utils:ModelUtils, lang, muti_user):
+    self.muti_user = muti_user
     self.model_utils = model_utils
     self.chat_model = Chat(model_utils, muti_user)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
@@ -42,7 +44,7 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
+  def __save_config_role(self, top_p=0.65, temperature=2, presence_penalty=0.2, frequency_penalty=0.2):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
       self.__save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
   
@@ -259,10 +261,14 @@ class UI:
             presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Presence Penalty')
             frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
             with gr.Row():
-              with gr.Column(min_width=100):
+              if self.muti_user:
                 unlock_btn = gr.Button(self.language_conf['UNLOCK'])
-              with gr.Column(min_width=100):
-                save_conf = gr.Button(self.language_conf['SAVE_CFG'])
+                save_conf = gr.Button(self.language_conf['SAVE_CFG'], visible=False)
+              else:
+                with gr.Column(min_width=100):
+                  unlock_btn = gr.Button(self.language_conf['UNLOCK'])
+                with gr.Column(min_width=100):
+                  save_conf = gr.Button(self.language_conf['SAVE_CFG'])
 
       with gr.Tab(self.language_conf['CHAR']):
         with gr.Row():

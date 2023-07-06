@@ -6,8 +6,6 @@ torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
 import gc
-import numpy as np
-from torch.nn import functional as F
 
 class ModelUtils:
 
