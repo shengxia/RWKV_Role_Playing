@@ -3,6 +3,7 @@ from pathlib import Path
 import os, json, datetime
 import pickle
 import copy, re
+import uuid
 
 class Chat:
   
@@ -28,6 +29,7 @@ class Chat:
       'action_start': action_start,
       'action_end': action_end,
       'greeting': greeting,
+      'log_hash': str(uuid.uuid1()).replace('-', '')
     }
     init_prompt = self.__get_init_prompt(all_state, bot, bot_persona, user, example_message, as_default)
     init_prompt = init_prompt.strip().split('\n')
@@ -51,12 +53,8 @@ class Chat:
     return self.__generate_cai_chat_html(all_state), all_state
   
   def reset_bot(self, all_state):
-    log_name = f'./log/{all_state["bot_chat"]}.json'
-    if os.path.exists(log_name):
-      os.makedirs(f'./log/{all_state["bot_chat"]}', exist_ok=True)
-      log_bk_name = f'./log/{all_state["bot_chat"]}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json'
-      os.rename(log_name, log_bk_name)
     out, model_tokens, model_state = self.model_utils.load_all_stat(all_state, 'chat_init')
+    all_state['log_hash'] = str(uuid.uuid1()).replace('-', '')
     all_state = self.model_utils.save_all_stat(all_state, 'chat', out, model_tokens, model_state)
     try:
       all_state = self.model_utils.remove_stat(all_state, 'chat_pre')
@@ -173,11 +171,9 @@ class Chat:
     return self.__generate_cai_chat_html(all_state), chat, action, all_state
   
   def __save_log(self, all_state):
-    if self.muti_user:
-      return
-    os.makedirs('log', exist_ok=True)
+    os.makedirs(f'log/{all_state["bot_chat"]}/', exist_ok=True)
     dict_list = [{'input': q, 'output': a} for q, a in all_state['chatbot']]
-    with open(f'./log/{all_state["bot_chat"]}.json', 'w', encoding='utf-8') as f:
+    with open(f'./log/{all_state["bot_chat"]}/{all_state["log_hash"]}.json', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
   def __save_chat(self, all_state):
