@@ -24,7 +24,6 @@ class ModelUtils:
   NEG_INF = -999999999
   AVOID_REPEAT = '，：？！'
   AVOID_REPEAT_TOKENS = []
-  all_state = {}
   penalty_decay = 0.996
   
   def __init__(self, args):
@@ -49,22 +48,24 @@ class ModelUtils:
       out[model_tokens[-1]] = self.NEG_INF
     return out, model_tokens, model_state
   
-  def save_all_stat(self, srv, name, last_out, model_tokens, model_state):
-    n = f'{name}_{srv}'
-    self.all_state[n] = {}
-    self.all_state[n]['out'] = last_out
-    self.all_state[n]['rnn'] = copy.deepcopy(model_state)
-    self.all_state[n]['token'] = copy.deepcopy(model_tokens)
+  def save_all_stat(self, all_state, name, last_out, model_tokens, model_state):
+    n = f'{name}'
+    all_state[n] = {}
+    all_state[n]['out'] = last_out
+    all_state[n]['rnn'] = copy.deepcopy(model_state)
+    all_state[n]['token'] = copy.deepcopy(model_tokens)
+    return all_state
 
-  def load_all_stat(self, srv, name):
-    n = f'{name}_{srv}'
-    model_state = copy.deepcopy(self.all_state[n]['rnn'])
-    model_tokens = copy.deepcopy(self.all_state[n]['token'])
-    return self.all_state[n]['out'], model_tokens, model_state
+  def load_all_stat(self, all_state, name):
+    n = f'{name}'
+    model_state = copy.deepcopy(all_state[n]['rnn'])
+    model_tokens = copy.deepcopy(all_state[n]['token'])
+    return all_state[n]['out'], model_tokens, model_state
   
-  def remove_stat(self, srv, name):
-    n = f'{name}_{srv}'
-    del self.all_state[n]
+  def remove_stat(self, all_state, name):
+    n = f'{name}'
+    del all_state[n]
+    return all_state
   
   def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
     gc.collect()
@@ -78,8 +79,6 @@ class ModelUtils:
         out[self.CHN_PERIOD_END] = self.NEG_INF
         out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
         out[self.END_OF_LINE] = self.NEG_INF    
-        if chat_param['action_end_token'] and i < chat_param['min_len'] / 2:
-          out[chat_param['action_end_token']] = self.NEG_INF    
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
