@@ -268,7 +268,7 @@ class Chat:
         f"The following is a coherent verbose detailed conversation between {user} and {bot}."
       ]
       init_prompt_part2 = [
-        f"根据以下描述来扮演{bot}和我对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n",
+        f"根据以下描述来扮演{bot}和{user}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n",
         f"The following is another coherent verbose detailed conversation between {user} and {bot}.\n"
       ]
       # init_prompt_final = init_prompt[random.randint(0, 1)]
