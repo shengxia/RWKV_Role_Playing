@@ -15,6 +15,7 @@ class Chat:
       self.chat_css = f.read()
 
   def load_init_prompt(self, all_state, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, as_default=False):
+    self.model_utils.clear_cache()
     model_tokens = []
     model_state = None
     all_state = {
@@ -136,6 +137,7 @@ class Chat:
     return chat, action
   
   def clear_last(self, all_state):
+    self.model_utils.clear_cache()
     n = 1
     if(len(all_state['chatbot']) == 0):
       return self.__generate_cai_chat_html(all_state), '', ''
@@ -299,6 +301,7 @@ class Chat:
     return True
 
   def arrange_token(self, all_state):
+    self.model_utils.clear_cache()
     out, model_tokens, model_state = self.model_utils.load_all_stat(all_state, 'chat_init')
     chat_str = ''
     chat_str_pre = ''

@@ -66,13 +66,12 @@ class ModelUtils:
     return all_state
   
   def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
-    gc.collect()
-    torch.cuda.empty_cache()
+    self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
     for i in range(999):
-      # if i == 0 and chat_param['action_start_token']:
-      #   out[chat_param['action_start_token']] = 10
+      if i == 0 and chat_param['action_start_token']:
+        out[chat_param['action_start_token']] = 10
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
         out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
@@ -105,4 +104,8 @@ class ModelUtils:
       'action_end_token': action_end_token,
     }
     return chat_param
+  
+  def clear_cache(self):
+    gc.collect()
+    torch.cuda.empty_cache()
   
