@@ -22,7 +22,7 @@
   "CHAR": "角色",
   "USER_PH": "AI怎么称呼你",
   "USER_LB": "你的名字",
-  "FILE_NAME_PH": "角色文件保存路径",
+  "FILE_NAME_PH": "角色文件保存路径（留空以使用角色名）",
   "FILE_NAME_LB": "角色文件保存路径",
   "BOT_PH": "角色名字",
   "BOT_LB": "角色的名字",

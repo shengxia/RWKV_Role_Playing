@@ -50,6 +50,8 @@ class UI:
   
   # 保存角色
   def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
+    if file_name == '' and bot != '':
+      file_name = bot
     with open(f"{self.char_path}/{file_name}.json", 'w', encoding='utf8') as f:
       char = {
         'user': user, 

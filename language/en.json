@@ -22,7 +22,7 @@
   "CHAR": "character",
   "USER_PH": "your name",
   "USER_LB": "your name",
-  "FILE_NAME_PH": "character save file",
+  "FILE_NAME_PH": "character save file(leave empty to use bot name)",
   "FILE_NAME_LB": "character save file",
   "BOT_PH": "character name",
   "BOT_LB": "character name",
