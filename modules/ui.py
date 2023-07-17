@@ -49,8 +49,10 @@ class UI:
       self.__save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
   
   # 保存角色
-  def __save_char(self, user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
-    with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
+  def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
+    if file_name == '' and bot != '':
+      file_name = bot
+    with open(f"{self.char_path}/{file_name}.json", 'w', encoding='utf8') as f:
       char = {
         'user': user, 
         'bot': bot, 
@@ -82,6 +84,7 @@ class UI:
                                                char['example_message'], char['use_qa'])
     return_arr = (
       state,
+      file_name,
       char['user'], 
       char['bot'], 
       char['action_start'], 
@@ -273,6 +276,7 @@ class UI:
       with gr.Tab(self.language_conf['CHAR']):
         with gr.Row():
           with gr.Column():
+            file_name = gr.Textbox(placeholder=self.language_conf['FILE_NAME_PH'], label=self.language_conf['FILE_NAME_LB'])
             user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
             bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
             use_qa = gr.Checkbox(label=self.language_conf['QA_REPLACE'])
@@ -290,7 +294,7 @@ class UI:
       
       input_list = [message, action, top_p, temperature, presence_penalty, frequency_penalty, min_len]
       output_list = [message, action, chatbot]
-      char_input_list = [user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
+      char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown, state], outputs=[state] + char_input_list + interactive_list)
