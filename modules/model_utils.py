@@ -6,8 +6,6 @@ torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
 import gc
-import numpy as np
-from torch.nn import functional as F
 
 class ModelUtils:
 
@@ -15,7 +13,7 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHUNK_LEN = 100
+  CHUNK_LEN = 75
   END_OF_TEXT = 0
   END_OF_LINE = 11
   DOUBLE_END_OF_LINE = 261
@@ -68,8 +66,7 @@ class ModelUtils:
     return all_state
   
   def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
-    gc.collect()
-    torch.cuda.empty_cache()
+    self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
     for i in range(999):
@@ -107,4 +104,8 @@ class ModelUtils:
       'action_end_token': action_end_token,
     }
     return chat_param
+  
+  def clear_cache(self):
+    gc.collect()
+    torch.cuda.empty_cache()
   

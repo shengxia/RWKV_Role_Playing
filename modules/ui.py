@@ -11,8 +11,10 @@ class UI:
   language_path = './language/'
   lock_flag_role = True
   language_conf = None
+  muti_user = False
 
   def __init__(self, model_utils:ModelUtils, lang, muti_user):
+    self.muti_user = muti_user
     self.model_utils = model_utils
     self.chat_model = Chat(model_utils, muti_user)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
@@ -42,13 +44,15 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.7, temperature=2, presence_penalty=0.5, frequency_penalty=0.5):
+  def __save_config_role(self, top_p=0.65, temperature=2, presence_penalty=0.2, frequency_penalty=0.2):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
       self.__save_config(f, top_p, temperature, presence_penalty, frequency_penalty)
   
   # 保存角色
-  def __save_char(self, user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
-    with open(f"{self.char_path}/{bot}.json", 'w', encoding='utf8') as f:
+  def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
+    if file_name == '' and bot != '':
+      file_name = bot
+    with open(f"{self.char_path}/{file_name}.json", 'w', encoding='utf8') as f:
       char = {
         'user': user, 
         'bot': bot, 
@@ -80,6 +84,7 @@ class UI:
                                                char['example_message'], char['use_qa'])
     return_arr = (
       state,
+      file_name,
       char['user'], 
       char['bot'], 
       char['action_start'], 
@@ -259,14 +264,19 @@ class UI:
             presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Presence Penalty')
             frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
             with gr.Row():
-              with gr.Column(min_width=100):
+              if self.muti_user:
                 unlock_btn = gr.Button(self.language_conf['UNLOCK'])
-              with gr.Column(min_width=100):
-                save_conf = gr.Button(self.language_conf['SAVE_CFG'])
+                save_conf = gr.Button(self.language_conf['SAVE_CFG'], visible=False)
+              else:
+                with gr.Column(min_width=100):
+                  unlock_btn = gr.Button(self.language_conf['UNLOCK'])
+                with gr.Column(min_width=100):
+                  save_conf = gr.Button(self.language_conf['SAVE_CFG'])
 
       with gr.Tab(self.language_conf['CHAR']):
         with gr.Row():
           with gr.Column():
+            file_name = gr.Textbox(placeholder=self.language_conf['FILE_NAME_PH'], label=self.language_conf['FILE_NAME_LB'])
             user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
             bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
             use_qa = gr.Checkbox(label=self.language_conf['QA_REPLACE'])
@@ -284,7 +294,7 @@ class UI:
       
       input_list = [message, action, top_p, temperature, presence_penalty, frequency_penalty, min_len]
       output_list = [message, action, chatbot]
-      char_input_list = [user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
+      char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown, state], outputs=[state] + char_input_list + interactive_list)
