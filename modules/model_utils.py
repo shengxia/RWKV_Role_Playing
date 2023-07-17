@@ -13,7 +13,7 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHUNK_LEN = 100
+  CHUNK_LEN = 75
   END_OF_TEXT = 0
   END_OF_LINE = 11
   DOUBLE_END_OF_LINE = 261
