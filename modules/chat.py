@@ -47,7 +47,7 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat('chat_init', out, model_tokens, model_state)
     if not self.muti_user and os.path.exists(f'save/{bot}.sav'):
-      data = self.__load_chat(self.role_info.bot_chat)
+      data = self.__load_chat()
       self.model_utils.save_all_stat('chat', data['out'], data['model_tokens'], data['model_state'])
       if data['model_tokens_pre']:
         self.model_utils.save_all_stat('chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])

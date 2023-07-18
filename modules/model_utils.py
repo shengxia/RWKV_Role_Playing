@@ -108,7 +108,3 @@ class ModelUtils:
     gc.collect()
     torch.cuda.empty_cache()
   
-  def release_memory(self):
-    del self.all_state
-    self.clear_cache()
-  
