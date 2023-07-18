@@ -13,11 +13,10 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHUNK_LEN = 75
+  CHUNK_LEN = 100
   END_OF_TEXT = 0
   END_OF_LINE = 11
   DOUBLE_END_OF_LINE = 261
-  CHN_PERIOD = 10080
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
   AVOID_REPEAT = '，：？！'
@@ -48,10 +47,11 @@ class ModelUtils:
   
   def save_all_stat(self, all_state, name, last_out, model_tokens, model_state):
     n = f'{name}'
-    all_state[n] = {}
-    all_state[n]['out'] = last_out
-    all_state[n]['rnn'] = copy.deepcopy(model_state)
-    all_state[n]['token'] = copy.deepcopy(model_tokens)
+    all_state[n] = {
+      'out': last_out,
+      'rnn': copy.deepcopy(model_state),
+      'token': copy.deepcopy(model_tokens)
+    }
     return all_state
 
   def load_all_stat(self, all_state, name):
@@ -108,4 +108,8 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
+  
+  def release_memory(self, all_state):
+    del all_state
+    self.clear_cache()
   

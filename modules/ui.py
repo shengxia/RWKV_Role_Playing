@@ -16,7 +16,7 @@ class UI:
   def __init__(self, model_utils:ModelUtils, lang, muti_user):
     self.muti_user = muti_user
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils, muti_user)
+    self.chat_model = Chat(model_utils, muti_user, lang)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
       self.language_conf = json.loads(f.read())
 
@@ -214,14 +214,14 @@ class UI:
       configs_role['temperature'], 
       configs_role['presence'], 
       configs_role['frequency'], 
-      gr.Dropdown.update(choices=char_list), 
+      gr.Dropdown.update(choices=char_list)
     )
     return return_arr
 
   # 创建UI
   def create_ui(self):
     with gr.Blocks(title=self.language_conf['TITLE']) as app:
-      state = gr.State({})
+      state = gr.State()
       if not os.path.isfile(self.config_role_path):
         self.__save_config_role()
 
@@ -327,5 +327,4 @@ class UI:
         char_dropdown
       ]
       app.load(self.__init_ui, outputs=reload_list)
-
     return app

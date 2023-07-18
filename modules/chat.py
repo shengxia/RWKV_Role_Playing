@@ -1,21 +1,22 @@
 from modules.model_utils import ModelUtils
 from pathlib import Path
-import os, json, pickle, copy, re, uuid, random
+import os, json, pickle, copy, re, uuid
 
 class Chat:
   
   model_utils = None
   chat_css = ''
   muti_user = False
+  lang = ''
 
-  def __init__(self, model_utils:ModelUtils, muti_user):
+  def __init__(self, model_utils:ModelUtils, muti_user, lang):
     self.model_utils = model_utils
     self.muti_user = muti_user
+    self.lang = lang
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
 
   def load_init_prompt(self, all_state, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, as_default=False):
-    self.model_utils.clear_cache()
     model_tokens = []
     model_state = None
     all_state = {
@@ -137,14 +138,13 @@ class Chat:
     return chat, action
   
   def clear_last(self, all_state):
-    self.model_utils.clear_cache()
     n = 1
     if(len(all_state['chatbot']) == 0):
-      return self.__generate_cai_chat_html(all_state), '', ''
+      return self.__generate_cai_chat_html(all_state), '', '', all_state
     if not all_state['chatbot'][0][0]:
       n += 1
       if(len(all_state['chatbot']) == 1):
-        return self.__generate_cai_chat_html(all_state), '', ''
+        return self.__generate_cai_chat_html(all_state), '', '', all_state
     messages = all_state['chatbot'].pop()    
     if len(all_state['chatbot']) < n:
       out, model_tokens, model_state = self.model_utils.load_all_stat(all_state, 'chat_init')
@@ -253,7 +253,6 @@ class Chat:
       chat_str += f'{all_state["bot"]}: {row[1]}\n\n'
     return chat_str
   
-  # 目前这里我准备写成随机生成初始prompt的方法，我也不知道为什么，多次重复载入同样的初始prompt，生成效果会变差（对比测试一下）
   def __get_init_prompt(self, all_state, bot, bot_persona, user, example_message, as_default=False):
     if not as_default:
       if all_state['action_start'] and all_state['action_start'] in example_message and all_state['action_end'] in example_message:
@@ -263,18 +262,16 @@ class Chat:
         all_state['action_start_token'] = None
         all_state['action_end_token'] = None
       em = example_message.replace('<bot>', bot).replace('<user>', user)
-      init_prompt = [
-        f"阅读并理解以下{user}和{bot}之间的对话：",
-        f"The following is a coherent verbose detailed conversation between {user} and {bot}."
-      ]
-      init_prompt_part2 = [
-        f"根据以下描述来扮演{bot}和{user}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n",
-        f"The following is another coherent verbose detailed conversation between {user} and {bot}.\n"
-      ]
-      # init_prompt_final = init_prompt[random.randint(0, 1)]
-      # init_prompt_part2_final = init_prompt_part2[random.randint(0, 1)]
-      init_prompt_final = init_prompt[0]
-      init_prompt_part2_final = init_prompt_part2[0]
+      init_prompt = {
+        'zh': f"阅读并理解以下{user}和{bot}之间的对话：",
+        'en': f"The following is a coherent verbose detailed conversation between {user} and {bot}."
+      }
+      init_prompt_part2 = {
+        'zh': f"根据以下描述来扮演{bot}和{user}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n",
+        'en': f"The following is another coherent verbose detailed conversation between {user} and {bot}.\n"
+      }
+      init_prompt_final = init_prompt[self.lang]
+      init_prompt_part2_final = init_prompt_part2[self.lang]
       if em:
         init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2_final}'
       else:
@@ -301,11 +298,9 @@ class Chat:
     return True
 
   def arrange_token(self, all_state):
-    self.model_utils.clear_cache()
     out, model_tokens, model_state = self.model_utils.load_all_stat(all_state, 'chat_init')
     chat_str = ''
     chat_str_pre = ''
-    i = 0
     for row in reversed(all_state['chatbot'][:-1]):
       if len(chat_str_pre) > 400:
         break
