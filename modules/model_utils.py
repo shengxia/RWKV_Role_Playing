@@ -13,15 +13,15 @@ class ModelUtils:
   pipline = None
   model_path = None
   strategy = None
-  CHUNK_LEN = 75
+  CHUNK_LEN = 100
   END_OF_TEXT = 0
   END_OF_LINE = 11
   DOUBLE_END_OF_LINE = 261
-  CHN_PERIOD = 10080
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
   AVOID_REPEAT = '，：？！'
   AVOID_REPEAT_TOKENS = []
+  all_state = {}
   penalty_decay = 0.996
   
   def __init__(self, args):
@@ -46,24 +46,23 @@ class ModelUtils:
       out[model_tokens[-1]] = self.NEG_INF
     return out, model_tokens, model_state
   
-  def save_all_stat(self, all_state, name, last_out, model_tokens, model_state):
+  def save_all_stat(self, name, last_out, model_tokens, model_state):
     n = f'{name}'
-    all_state[n] = {}
-    all_state[n]['out'] = last_out
-    all_state[n]['rnn'] = copy.deepcopy(model_state)
-    all_state[n]['token'] = copy.deepcopy(model_tokens)
-    return all_state
+    self.all_state[n] = {
+      'out': last_out,
+      'rnn': copy.deepcopy(model_state),
+      'token': copy.deepcopy(model_tokens)
+    }
 
-  def load_all_stat(self, all_state, name):
+  def load_all_stat(self, name):
     n = f'{name}'
-    model_state = copy.deepcopy(all_state[n]['rnn'])
-    model_tokens = copy.deepcopy(all_state[n]['token'])
-    return all_state[n]['out'], model_tokens, model_state
+    model_state = copy.deepcopy(self.all_state[n]['rnn'])
+    model_tokens = copy.deepcopy(self.all_state[n]['token'])
+    return self.all_state[n]['out'], model_tokens, model_state
   
-  def remove_stat(self, all_state, name):
+  def remove_stat(self, name):
     n = f'{name}'
-    del all_state[n]
-    return all_state
+    del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
     self.clear_cache()
@@ -108,4 +107,8 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
+  
+  def release_memory(self):
+    del self.all_state
+    self.clear_cache()
   
