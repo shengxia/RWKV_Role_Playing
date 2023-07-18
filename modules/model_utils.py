@@ -21,6 +21,7 @@ class ModelUtils:
   NEG_INF = -999999999
   AVOID_REPEAT = '，：？！'
   AVOID_REPEAT_TOKENS = []
+  all_state = {}
   penalty_decay = 0.996
   
   def __init__(self, args):
@@ -45,25 +46,23 @@ class ModelUtils:
       out[model_tokens[-1]] = self.NEG_INF
     return out, model_tokens, model_state
   
-  def save_all_stat(self, all_state, name, last_out, model_tokens, model_state):
+  def save_all_stat(self, name, last_out, model_tokens, model_state):
     n = f'{name}'
-    all_state[n] = {
+    self.all_state[n] = {
       'out': last_out,
       'rnn': copy.deepcopy(model_state),
       'token': copy.deepcopy(model_tokens)
     }
-    return all_state
 
-  def load_all_stat(self, all_state, name):
+  def load_all_stat(self, name):
     n = f'{name}'
-    model_state = copy.deepcopy(all_state[n]['rnn'])
-    model_tokens = copy.deepcopy(all_state[n]['token'])
-    return all_state[n]['out'], model_tokens, model_state
+    model_state = copy.deepcopy(self.all_state[n]['rnn'])
+    model_tokens = copy.deepcopy(self.all_state[n]['token'])
+    return self.all_state[n]['out'], model_tokens, model_state
   
-  def remove_stat(self, all_state, name):
+  def remove_stat(self, name):
     n = f'{name}'
-    del all_state[n]
-    return all_state
+    del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
     self.clear_cache()
@@ -109,7 +108,7 @@ class ModelUtils:
     gc.collect()
     torch.cuda.empty_cache()
   
-  def release_memory(self, all_state):
-    del all_state
+  def release_memory(self):
+    del self.all_state
     self.clear_cache()
   
