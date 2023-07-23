@@ -1,4 +1,5 @@
 import os, json
+import time
 import gradio as gr
 from modules.model_utils import ModelUtils
 from modules.chat import Chat
@@ -7,6 +8,7 @@ class UI:
   model_utils = None
   chat_model = None
   char_path = './chars'
+  save_path = './save'
   config_role_path = './config/config_role.json'
   language_path = './language/'
   lock_flag_role = True
@@ -21,18 +23,38 @@ class UI:
       self.language_conf = json.loads(f.read())
 
   def __get_json_files(self, path):
-    files=os.listdir(path)
-    file_list = []
-    for f in files:
-      file_name_arr = f.split('.')
-      if file_name_arr[-1] == 'json':
-        file_list.append(file_name_arr[0])
+    file_list = self.__get_file_list_by_extend(path, "json")
     return file_list
+
+  def __get_save_files(self, path):
+    file_list = self.__get_file_list_by_extend(path, "sav")
+    return file_list
+
+  def __get_file_list_by_extend(self, path, file_extend):
+      file_list = []
+      if os.path.exists(path) and os.path.isdir(path):
+        files=os.listdir(path)
+        for f in files:
+          file_name_arr = f.split('.')
+          if file_name_arr[-1] == file_extend:
+            file_list.append(file_name_arr[0])
+      return file_list
 
   # 更新角色列表
   def __update_chars_list(self):
     char_list = self.__get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
+  
+  # 更新对话记录列表
+  def __update_save_list(self, bot_name):
+    save_list = self.__get_save_list(bot_name)
+    return gr.Dropdown.update(choices=save_list)
+
+  def __get_save_list(self, bot_name):
+      save_list = [ f'{bot_name}/' + i for i in self.__get_save_files(f'{self.save_path}/{bot_name}')]
+      if os.path.exists(f'{self.save_path}/{bot_name}.sav'):
+        save_list.append(f'{bot_name}')
+      return save_list
   
   def __save_config(self, f, top_p, temperature, presence_penalty, frequency_penalty):
     config = {
@@ -92,7 +114,8 @@ class UI:
       char['bot_persona'],
       char['example_message'],
       char['use_qa'],
-      chatbot, 
+      chatbot,
+      self.__update_save_list(file_name),
       gr.Textbox.update(interactive=True), 
       gr.Textbox.update(interactive=True), 
       gr.Button.update(interactive=True), 
@@ -115,6 +138,20 @@ class UI:
       gr.Button.update(interactive=True)
     )
     return return_arr
+
+  def __load_save(self, file_name):
+    return (self.chat_model.load_state_from(file_name),)
+
+  def __save_save(self, bot, file_name):
+    if file_name == '':
+      file_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    save_path=f'{bot}/{file_name}'
+    self.chat_model.save_chat_to(save_path)
+    return (gr.Dropdown.update(choices=self.__get_save_list(bot),value=save_path),)
+
+  def __save_update(self, bot, file_name):
+    self.chat_model.save_chat_to(file_name)
+    return (gr.Dropdown.update(choices=self.__get_save_list(bot),value=file_name),)
 
   def __confirm_delete(self):
     return_arr = (
@@ -252,6 +289,21 @@ class UI:
               with gr.Column(min_width=100):
                 load_char_btn = gr.Button(self.language_conf['LOAD_CHAR'])
               load_default_btn = gr.Button(self.language_conf['FREE_MODE'])
+            with gr.Row():
+              save_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['SELECT_SAVE'])
+            with gr.Row():
+              with gr.Column(min_width=100):
+                refresh_save_btn = gr.Button(self.language_conf['LOAD_SAVE_LIST'])
+              with gr.Column(min_width=100):
+                load_save_btn = gr.Button(self.language_conf['LOAD_SAVE'])
+            with gr.Row():
+              save_file_name = gr.Textbox(label=self.language_conf['SAVE_FILE'])
+            with gr.Row():
+              with gr.Column(min_width=100):
+                save_update_btn = gr.Button(self.language_conf['UPDATE_STATE'])
+              with gr.Column(min_width=100):
+                save_btn = gr.Button(self.language_conf['SAVE_STATE'])
+              
             min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label=self.language_conf['MIN_LEN'])
             top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
             temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
@@ -291,9 +343,13 @@ class UI:
       char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
-      load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + interactive_list)
+      load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)
       load_default_btn.click(self.__load_default_char, outputs=interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
+      refresh_save_btn.click(self.__update_save_list, inputs=[char_dropdown], outputs=[save_dropdown])
+      load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
+      save_btn.click(self.__save_save, inputs=[char_dropdown,save_file_name], outputs=[save_dropdown])
+      save_update_btn.click(self.__save_update, inputs=[char_dropdown,save_dropdown], outputs=[save_dropdown])
       save_conf.click(self.__save_config_role, inputs=input_list[2:-1])
       message.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
