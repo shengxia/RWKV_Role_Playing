@@ -47,16 +47,23 @@ class Chat:
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
     self.model_utils.save_all_stat('chat_init', out, model_tokens, model_state)
     if not self.muti_user and os.path.exists(f'save/{bot}.sav'):
-      data = self.__load_chat()
-      self.model_utils.save_all_stat('chat', data['out'], data['model_tokens'], data['model_state'])
-      if data['model_tokens_pre']:
-        self.model_utils.save_all_stat('chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
-      self.role_info.chatbot = data['chatbot']
+      self.__load_state_from(bot)
     else:
       if greeting:
         self.role_info.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     return self.__generate_cai_chat_html()
+
+  def load_state_from(self, file_name:str):
+    self.__load_state_from(file_name)
+    return self.__generate_cai_chat_html()
+
+  def __load_state_from(self, file_name:str):
+      data = self.__load_chat_from(file_name)
+      self.model_utils.save_all_stat('chat', data['out'], data['model_tokens'], data['model_state'])
+      if data['model_tokens_pre']:
+        self.model_utils.save_all_stat('chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
+      self.role_info.chatbot = data['chatbot']
   
   def reset_bot(self):
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat_init')
@@ -182,10 +189,11 @@ class Chat:
     with open(f'./log/{self.role_info.bot_chat}/{self.role_info.log_hash}.json', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
-  def __save_chat(self):
+  def save_chat_to(self, file_name:str):
     if self.muti_user:
       return
-    os.makedirs('save', exist_ok=True)
+    save_path = f'save/{file_name}.sav'
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
     try:
       out_pre, model_tokens_pre, model_state_pre = self.model_utils.load_all_stat('chat_pre')
@@ -202,13 +210,19 @@ class Chat:
       "model_state_pre": model_state_pre,
       "chatbot": self.role_info.chatbot
     }
-    with open(f'save/{self.role_info.bot_chat}.sav', 'wb') as f:
+    with open(save_path, 'wb') as f:
       pickle.dump(data, f)
 
-  def __load_chat(self):
-    with open(f'save/{self.role_info.bot_chat}.sav', 'rb') as f:
+  def __save_chat(self):
+    return self.save_chat_to(self.role_info.bot_chat)
+
+  def __load_chat_from(self, file_name:str):
+    with open(f'save/{file_name}.sav', 'rb') as f:
       data = pickle.load(f)
     return data
+
+  def __load_chat(self):
+    return self.__load_chat_from(self.role_info.bot_chat)
   
   def __generate_cai_chat_html(self):
     output = f'<style>{self.chat_css}</style><div class="chat" id="chat">'
