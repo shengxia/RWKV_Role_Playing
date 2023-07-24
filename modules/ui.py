@@ -13,12 +13,10 @@ class UI:
   language_path = './language/'
   lock_flag_role = True
   language_conf = None
-  muti_user = False
 
-  def __init__(self, model_utils:ModelUtils, lang, muti_user):
-    self.muti_user = muti_user
+  def __init__(self, model_utils:ModelUtils, lang):
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils, muti_user, lang)
+    self.chat_model = Chat(model_utils, lang)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
       self.language_conf = json.loads(f.read())
 
@@ -125,22 +123,9 @@ class UI:
       gr.Button.update(interactive=True)
     )
     return return_arr
-  
-  def __load_default_char(self):
-    self.chat_model.load_init_prompt('人类', '助手', '（', '）', None, None, None, True, True)
-    return_arr = (
-      gr.Textbox.update(interactive=True), 
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True)
-    )
-    return return_arr
 
   def __load_save(self, file_name):
-    return (self.chat_model.load_state_from(file_name),)
+    return (self.chat_model.load_state(file_name),)
 
   def __save_save(self, bot, file_name):
     if file_name == '':
@@ -167,11 +152,6 @@ class UI:
       gr.Button.update(visible=False),
       gr.Button.update(visible=False)
     )
-    return return_arr
-  
-  def __unlock_role_param(self):
-    return_arr = self.__unlock_param(self.lock_flag_role)
-    self.lock_flag_role = not self.lock_flag_role
     return return_arr
 
   def __send_message(self, message, action, top_p, temperature, presence_penalty, frequency_penalty, min_len, action_front, replace_message):
@@ -221,20 +201,6 @@ class UI:
       gr.Button.update(visible=False)
     )
     return return_arr
-  
-  def __unlock_param(self, flag):
-    text = self.language_conf['LOCK']
-    if not flag:
-      text = self.language_conf['UNLOCK']
-    return_arr = (
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Slider.update(interactive=flag), 
-      gr.Button.update(value=text)
-    )
-    return return_arr
     
   # 初始化UI
   def __init_ui(self):
@@ -281,42 +247,37 @@ class UI:
               with gr.Column(min_width=100):
                 clear_cancel = gr.Button(self.language_conf['CANCEL'], visible=False)
           with gr.Column(scale=1):
-            with gr.Row():
-              char_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['CHAR_DP_LB'])
-            with gr.Row():
-              with gr.Column(min_width=100):
-                refresh_char_btn = gr.Button(self.language_conf['REFRESH_CHAR'])
-              with gr.Column(min_width=100):
-                load_char_btn = gr.Button(self.language_conf['LOAD_CHAR'])
-              load_default_btn = gr.Button(self.language_conf['FREE_MODE'])
-            with gr.Row():
-              save_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['SELECT_SAVE'])
-            with gr.Row():
-              with gr.Column(min_width=100):
-                refresh_save_btn = gr.Button(self.language_conf['LOAD_SAVE_LIST'])
-              with gr.Column(min_width=100):
-                load_save_btn = gr.Button(self.language_conf['LOAD_SAVE'])
-            with gr.Row():
-              save_file_name = gr.Textbox(label=self.language_conf['SAVE_FILE'])
-            with gr.Row():
-              with gr.Column(min_width=100):
-                save_update_btn = gr.Button(self.language_conf['UPDATE_STATE'])
-              with gr.Column(min_width=100):
-                save_btn = gr.Button(self.language_conf['SAVE_STATE'])
-              
-            min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label=self.language_conf['MIN_LEN'])
-            top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
-            temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
-            presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Presence Penalty')
-            frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
-            with gr.Row():
-              if self.muti_user:
-                unlock_btn = gr.Button(self.language_conf['UNLOCK'])
-                save_conf = gr.Button(self.language_conf['SAVE_CFG'], visible=False)
-              else:
+            with gr.Tab('常规'):
+              with gr.Row():
+                char_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['CHAR_DP_LB'])
+              with gr.Row():
                 with gr.Column(min_width=100):
-                  unlock_btn = gr.Button(self.language_conf['UNLOCK'])
+                  refresh_char_btn = gr.Button(self.language_conf['REFRESH_CHAR'])
                 with gr.Column(min_width=100):
+                  load_char_btn = gr.Button(self.language_conf['LOAD_CHAR'])
+            with gr.Tab('存档'):
+              with gr.Row():
+                save_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['SELECT_SAVE'])
+              with gr.Row():
+                with gr.Column(min_width=100):
+                  refresh_save_btn = gr.Button(self.language_conf['LOAD_SAVE_LIST'])
+                with gr.Column(min_width=100):
+                  load_save_btn = gr.Button(self.language_conf['LOAD_SAVE'])
+              with gr.Row():
+                save_file_name = gr.Textbox(label=self.language_conf['SAVE_FILE'])
+              with gr.Row():
+                with gr.Column(min_width=100):
+                  save_update_btn = gr.Button(self.language_conf['UPDATE_STATE'])
+                with gr.Column(min_width=100):
+                  save_btn = gr.Button(self.language_conf['SAVE_STATE'])
+            with gr.Tab('配置'):  
+              min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label=self.language_conf['MIN_LEN'])
+              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
+              temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
+              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Presence Penalty')
+              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
+              with gr.Row():
+                with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
 
       with gr.Tab(self.language_conf['CHAR']):
@@ -344,7 +305,6 @@ class UI:
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)
-      load_default_btn.click(self.__load_default_char, outputs=interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       refresh_save_btn.click(self.__update_save_list, inputs=[char_dropdown], outputs=[save_dropdown])
       load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
@@ -358,7 +318,6 @@ class UI:
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-1], outputs=[message, action])
-      unlock_btn.click(self.__unlock_role_param, outputs=input_list[2:] + [unlock_btn])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
