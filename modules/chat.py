@@ -16,17 +16,20 @@ class Chat:
     self.lang = lang
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
-
-  def load_init_prompt(self, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa):
+  
+  def load_init_prompt(self, file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa):
     model_tokens = []
     model_state = None
-    self.role_info = RoleInfo([], user, bot, action_start, action_end, greeting, bot_persona, example_message, 
-                              use_qa, str(uuid.uuid1()).replace('-', ''))
-    init_prompt = self.__get_init_prompt()
+    self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, 
+                              example_message, use_qa, str(uuid.uuid1()).replace('-', ''))
     if os.path.exists(f'save/{bot}.sav'):
       self.load_state(bot)
     else:
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+      out, model_tokens, model_state = self.__get_init_state()
+      if not model_state:
+        init_prompt = self.__get_init_prompt()
+        out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+        self.__save_init_state(file_name, out, model_tokens, model_state)
       if greeting:
         self.role_info.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -41,10 +44,7 @@ class Chat:
     return self.__generate_cai_chat_html()
   
   def reset_bot(self):
-    init_prompt = self.__get_init_prompt()
-    model_tokens = []
-    model_state = None
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+    out, model_tokens, model_state = self.__get_init_state()
     self.role_info.log_hash = str(uuid.uuid1()).replace('-', '')
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     try:
@@ -66,7 +66,7 @@ class Chat:
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
     except:
-      return '', self.__generate_cai_chat_html()
+      return '', '', self.__generate_cai_chat_html()
     new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
@@ -148,18 +148,13 @@ class Chat:
   
   def __flush_chat(self):
     chatbot = copy.deepcopy(self.role_info.chatbot)
-    init_prompt = self.__get_init_prompt()
-    model_tokens = []
-    model_state = None
+    out, model_tokens, model_state = self.__get_init_state()
     if len(chatbot) < 2:
       self.model_utils.remove_stat('chat_pre')
-      # 全量生成，主要慢在这里
-      chat_str = init_prompt + self.__get_chatbot_str(chatbot[1:])
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     else:
       # 全量生成，主要慢在这里
-      chat_str = init_prompt + self.__get_chatbot_str(chatbot[1:-1])
+      chat_str = self.__get_chatbot_str(chatbot[1:-1])
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       # 增量生成
@@ -174,6 +169,30 @@ class Chat:
     with open(f'./log/{self.role_info.bot_chat}/{self.role_info.log_hash}.json', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
+  def __save_init_state(self, file_name, out, model_tokens, model_state):
+    save_path = f"./chars/init_state"
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    data = {
+      "out": out,
+      "model_tokens": model_tokens,
+      "model_state": model_state
+    }
+    with open(f"{save_path}/{file_name}.sav", 'wb') as f:
+      pickle.dump(data, f)
+
+  def __get_init_state(self):
+    out = ''
+    model_tokens = []
+    model_state = None
+    save_file = f"./chars/init_state/{self.role_info.file_name}.sav"
+    if os.path.exists(save_file):
+      with open(save_file, 'rb') as f:
+        data = pickle.load(f)
+        out = data['out']
+        model_tokens = data['model_tokens']
+        model_state = data['model_state']
+    return out, model_tokens, model_state,
+  
   def save_chat_to(self, file_name:str):
     save_path = f'save/{file_name}.sav'
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -302,8 +321,7 @@ class Chat:
     return True
 
   def arrange_token(self):
-    init_prompt = self.__get_init_prompt()
-    out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+    out, model_tokens, model_state = self.__get_init_state()
     chat_str = ''
     chat_str_pre = ''
     for row in reversed(self.role_info.chatbot[:-1]):
@@ -317,7 +335,7 @@ class Chat:
     chat_str += f'{self.role_info.bot}: {self.role_info.chatbot[-1][1]}\n\n'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
-
+    
   def __find_all_chat(self, input_str):
     if not self.role_info.action_start or not self.role_info.action_end:
       return (0, len(input_str))

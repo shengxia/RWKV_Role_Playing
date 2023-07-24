@@ -84,6 +84,9 @@ class UI:
         'use_qa': use_qa
       }
       json.dump(char, f, indent=2, ensure_ascii=False)
+      save_file = f"./chars/init_state/{file_name}.sav"
+      if os.path.exists(save_file):
+        os.remove(save_file)
     char_list = self.__get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list)
 
@@ -99,7 +102,7 @@ class UI:
           char[key] = False
         else:
           char[key] = ''
-    chatbot = self.chat_model.load_init_prompt(char['user'], char['bot'], char['action_start'], 
+    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
                                                char['action_end'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
     return_arr = (

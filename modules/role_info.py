@@ -1,6 +1,7 @@
 class RoleInfo:
 
-  def __init__(self, chatbot, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, log_hash):
+  def __init__(self, file_name, chatbot, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, log_hash):
+    self.file_name = file_name
     self.chatbot = chatbot
     self.user_chat = user
     self.bot_chat = bot
