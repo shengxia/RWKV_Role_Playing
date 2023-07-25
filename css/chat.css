@@ -23,8 +23,9 @@
   line-height: 1.428571429;
 }
 
-.message i {
+.message p {
   color: #999 !important;
+  line-height: 1.428571429 !important;
 }
 
 .message_c {
