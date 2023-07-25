@@ -26,10 +26,6 @@ class Chat:
       self.load_state(bot)
     else:
       out, model_tokens, model_state = self.__get_init_state()
-      if not model_state:
-        init_prompt = self.__get_init_prompt()
-        out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
-        self.__save_init_state(file_name, out, model_tokens, model_state)
       if greeting:
         self.role_info.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -191,7 +187,11 @@ class Chat:
         out = data['out']
         model_tokens = data['model_tokens']
         model_state = data['model_state']
-    return out, model_tokens, model_state,
+    else:
+      init_prompt = self.__get_init_prompt()
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+      self.__save_init_state(self.role_info.file_name, out, model_tokens, model_state)
+    return out, model_tokens, model_state
   
   def save_chat_to(self, file_name:str):
     save_path = f'save/{file_name}.sav'
