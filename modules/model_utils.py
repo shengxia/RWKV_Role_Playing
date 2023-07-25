@@ -68,7 +68,7 @@ class ModelUtils:
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    for i in range(999):
+    for i in range(500):
       if i == 0 and chat_param['action_start_token']:
         out[chat_param['action_start_token']] = 10
       if chat_param['min_len'] >0 and i < chat_param['min_len']:

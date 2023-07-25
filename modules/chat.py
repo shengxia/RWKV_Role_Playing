@@ -22,6 +22,9 @@ class Chat:
     model_state = None
     self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, 
                               example_message, use_qa, str(uuid.uuid1()).replace('-', ''))
+    if action_start and action_start in example_message and action_end in example_message:
+      self.role_info.action_start_token = self.model_utils.pipeline.encode(f' {action_start}')[0]
+      self.role_info.action_end_token = self.model_utils.pipeline.encode(action_end)[0]
     if os.path.exists(f'save/{bot}.sav'):
       self.load_state(bot)
     else:
@@ -229,9 +232,7 @@ class Chat:
     chatbot = copy.deepcopy(self.role_info.chatbot)
     chatbot.reverse()
     for row in chatbot:
-      pos_arr = list(self.__find_all_chat(row[1]))
-      chat_action_data = self.__format_chat_action(pos_arr, row[1])
-      msg = self.__format_chat_html(chat_action_data).replace('\n', '<br>')
+      msg = row[1].replace('\n', '<br>').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
       output += f"""
         <div class="message message_c">
           <div class="circle-bot">
@@ -248,9 +249,7 @@ class Chat:
         </div>
       """
       if row[0] != None:
-        pos_arr = list(self.__find_all_chat(row[0]))
-        chat_action_data = self.__format_chat_action(pos_arr, row[0])
-        msg = self.__format_chat_html(chat_action_data).replace('\n', '<br>')
+        msg = row[0].replace('\n', '<br>').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -274,12 +273,6 @@ class Chat:
     return chat_str
   
   def __get_init_prompt(self):
-    if self.role_info.action_start and self.role_info.action_start in self.role_info.example_message and self.role_info.action_end in self.role_info.example_message:
-      self.role_info.action_start_token = self.model_utils.pipeline.encode(f' {self.role_info.action_start}')
-      self.role_info.action_end_token = self.model_utils.pipeline.encode(self.role_info.action_end)
-    else:
-      self.role_info.action_start_token = None
-      self.role_info.action_end_token = None
     em = self.role_info.example_message.replace('<bot>', self.role_info.bot_chat).replace('<user>', self.role_info.user_chat)
     init_prompt = {
       'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话：",
@@ -358,15 +351,6 @@ class Chat:
     if str:
       output_data.append([input_str, 'chat'])
     return output_data
-    
-  def __format_chat_html(self, chat_action_arr):
-    output_str = ''
-    for ca in chat_action_arr:
-      if ca[1] == 'action':
-        output_str += f'<i>{ca[0]}</i><br>'
-      else:
-        output_str += f'{ca[0]}<br>'
-    return output_str[:-4]
   
   def __get_chat_action(self, chat_action_arr):
     chat = ''

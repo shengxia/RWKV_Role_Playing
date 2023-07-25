@@ -47,5 +47,9 @@
   "TOKEN_LAST": "token previous",
   "GET_TOKEN": "watch",
   "MIN_LEN": "reply min length(set 0 to disable this item)",
-  "QA_REPLACE": "use \"User\" and \"Assistant\" to replace character's and your name"
+  "QA_REPLACE": "use \"User\" and \"Assistant\" to replace character's and your name",
+  "TAB_DEFAULT": "regular",
+  "TAB_SAVE": "save",
+  "TAB_CONFIG": "config",
+  "TAMPER": "tamper"
 }
