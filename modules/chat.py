@@ -170,14 +170,14 @@ class Chat:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
   def __save_init_state(self, file_name, out, model_tokens, model_state):
-    save_path = f"./chars/init_state"
+    save_path = f"./chars/init_state/{file_name}.sav"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     data = {
       "out": out,
       "model_tokens": model_tokens,
       "model_state": model_state
     }
-    with open(f"{save_path}/{file_name}.sav", 'wb') as f:
+    with open(save_path, 'wb') as f:
       pickle.dump(data, f)
 
   def __get_init_state(self):
