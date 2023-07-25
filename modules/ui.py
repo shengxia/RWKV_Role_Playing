@@ -233,7 +233,7 @@ class UI:
             action = gr.Textbox(placeholder=self.language_conf['NARR_PH'], show_label=False, interactive=False)
             with gr.Row():
               action_front = gr.Checkbox(label=self.language_conf['AF_CK'], value=True)
-              replace_message = gr.Checkbox(label='替角色说')
+              replace_message = gr.Checkbox(label=self.language_conf['TAMPER'])
             with gr.Row():
               with gr.Column(min_width=150):
                 submit = gr.Button(self.language_conf['SUBMIT'], interactive=False)       
@@ -250,7 +250,7 @@ class UI:
               with gr.Column(min_width=100):
                 clear_cancel = gr.Button(self.language_conf['CANCEL'], visible=False)
           with gr.Column(scale=1):
-            with gr.Tab('常规'):
+            with gr.Tab(self.language_conf['TAB_DEFAULT']):
               with gr.Row():
                 char_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['CHAR_DP_LB'])
               with gr.Row():
@@ -258,7 +258,7 @@ class UI:
                   refresh_char_btn = gr.Button(self.language_conf['REFRESH_CHAR'])
                 with gr.Column(min_width=100):
                   load_char_btn = gr.Button(self.language_conf['LOAD_CHAR'])
-            with gr.Tab('存档'):
+            with gr.Tab(self.language_conf['TAB_SAVE']):
               with gr.Row():
                 save_dropdown = gr.Dropdown(None, interactive=True, label=self.language_conf['SELECT_SAVE'])
               with gr.Row():
@@ -273,7 +273,7 @@ class UI:
                   save_update_btn = gr.Button(self.language_conf['UPDATE_STATE'])
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
-            with gr.Tab('配置'):  
+            with gr.Tab(self.language_conf['TAB_CONFIG']):  
               min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label=self.language_conf['MIN_LEN'])
               top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
               temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
