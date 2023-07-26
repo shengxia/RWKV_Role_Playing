@@ -274,11 +274,11 @@ class UI:
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
-              min_len = gr.Slider(minimum=0, maximum=500, step=1, interactive=False, label=self.language_conf['MIN_LEN'])
-              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Top P')
-              temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, interactive=False, label='Temperature')
-              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Presence Penalty')
-              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, interactive=False, label='Frequency Penalty')
+              min_len = gr.Slider(minimum=0, maximum=500, step=1, label=self.language_conf['MIN_LEN'])
+              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+              temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
+              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
+              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
