@@ -25,8 +25,8 @@ class Chat:
     if action_start and action_start in example_message and action_end in example_message:
       self.role_info.action_start_token = self.model_utils.pipeline.encode(f' {action_start}')[0]
       self.role_info.action_end_token = self.model_utils.pipeline.encode(action_end)[0]
-    if os.path.exists(f'save/{bot}.sav'):
-      self.load_state(bot)
+    if os.path.exists(f'save/{file_name}.sav'):
+      self.load_state(file_name)
     else:
       out, model_tokens, model_state = self.__get_init_state()
       if greeting:
@@ -54,7 +54,7 @@ class Chat:
       self.role_info.chatbot = [[None, self.role_info.greeting]]
     else:
       self.role_info.chatbot = []
-    save_file = f'save/{self.role_info.bot_chat}.sav'
+    save_file = f'save/{self.role_info.file_name}.sav'
     if os.path.exists(save_file):
       os.remove(save_file)
     return None, None, self.__generate_cai_chat_html()
@@ -163,9 +163,9 @@ class Chat:
     self.chunked_index = None
 
   def __save_log(self):
-    os.makedirs(f'log/{self.role_info.bot_chat}/', exist_ok=True)
+    os.makedirs(f'log/{self.role_info.file_name}/', exist_ok=True)
     dict_list = [{'input': q, 'output': a} for q, a in self.role_info.chatbot]
-    with open(f'./log/{self.role_info.bot_chat}/{self.role_info.log_hash}.json', 'w', encoding='utf-8') as f:
+    with open(f'./log/{self.role_info.file_name}/{self.role_info.log_hash}.json', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
   def __save_init_state(self, file_name, out, model_tokens, model_state):
@@ -219,7 +219,7 @@ class Chat:
       pickle.dump(data, f)
 
   def __save_chat(self):
-    return self.save_chat_to(self.role_info.bot_chat)
+    return self.save_chat_to(self.role_info.file_name)
 
   def __load_chat_from(self, file_name:str):
     with open(f'save/{file_name}.sav', 'rb') as f:
@@ -228,7 +228,7 @@ class Chat:
   
   def __generate_cai_chat_html(self):
     output = f'<style>{self.chat_css}</style><div class="chat" id="chat">'
-    img_bot = f'<img src="file/chars/{self.role_info.bot_chat}.png">' if Path(f'chars/{self.role_info.bot_chat}.png').exists() else ''
+    img_bot = f'<img src="file/chars/{self.role_info.file_name}.png">' if Path(f'chars/{self.role_info.file_name}.png').exists() else ''
     chatbot = copy.deepcopy(self.role_info.chatbot)
     chatbot.reverse()
     for row in chatbot:

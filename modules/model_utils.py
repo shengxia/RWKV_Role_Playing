@@ -74,7 +74,7 @@ class ModelUtils:
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
         out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
-        out[self.END_OF_LINE] = self.NEG_INF    
+        out[self.END_OF_LINE] = self.NEG_INF
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
