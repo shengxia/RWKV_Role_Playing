@@ -154,10 +154,13 @@ class Chat:
       self.model_utils.remove_stat('chat_pre')
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     else:
-      # 全量生成，主要慢在这里
-      chat_str = self.__get_chatbot_str(chatbot[1:-1])
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
-      self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
+      if len(chatbot) == 2:
+        self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
+      else:
+        # 全量生成，主要慢在这里
+        chat_str = self.__get_chatbot_str(chatbot[1:-1])
+        out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+        self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       # 增量生成
       chat_str2 = self.__get_chatbot_str([chatbot[-1]])
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str2))
