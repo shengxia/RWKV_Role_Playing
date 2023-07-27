@@ -20,6 +20,7 @@ class Chat:
   def load_init_prompt(self, file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa):
     model_tokens = []
     model_state = None
+    self.chunked_index = None
     self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, 
                               example_message, use_qa, str(uuid.uuid1()).replace('-', ''))
     if action_start and action_start in example_message and action_end in example_message:
@@ -57,6 +58,7 @@ class Chat:
     save_file = f'save/{self.role_info.file_name}.sav'
     if os.path.exists(save_file):
       os.remove(save_file)
+    self.chunked_index = None
     return None, None, self.__generate_cai_chat_html()
   
   def regen_msg(self, top_p, temperature, presence_penalty, frequency_penalty, min_len):
@@ -152,10 +154,13 @@ class Chat:
       self.model_utils.remove_stat('chat_pre')
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     else:
-      # 全量生成，主要慢在这里
-      chat_str = self.__get_chatbot_str(chatbot[1:-1])
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
-      self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
+      if len(chatbot) == 2:
+        self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
+      else:
+        # 全量生成，主要慢在这里
+        chat_str = self.__get_chatbot_str(chatbot[1:-1])
+        out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
+        self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       # 增量生成
       chat_str2 = self.__get_chatbot_str([chatbot[-1]])
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str2))
@@ -263,7 +268,7 @@ class Chat:
           </div>
         """
     output += "</div>"
-    return output.replace('<br><br>', '<br>').replace('<br><br>', '<br>')
+    return output
   
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
