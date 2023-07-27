@@ -84,11 +84,17 @@ class UI:
         'use_qa': use_qa
       }
       json.dump(char, f, indent=2, ensure_ascii=False)
-      save_file = f"./chars/init_state/{file_name}.sav"
+      init_save_file = f"./chars/init_state/{file_name}.sav"
+      if os.path.exists(init_save_file):
+        os.remove(init_save_file)
+      save_file = f'save/{file_name}.sav'
       if os.path.exists(save_file):
         os.remove(save_file)
+    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
+                                               char['action_end'], char['greeting'], char['bot_persona'], 
+                                               char['example_message'], char['use_qa'])
     char_list = self.__get_json_files(self.char_path)
-    return gr.Dropdown.update(choices=char_list)
+    return gr.Dropdown.update(choices=char_list), chatbot
 
   # 载入角色
   def __load_char(self, file_name):
@@ -318,7 +324,7 @@ class UI:
       action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
-      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown])
+      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot])
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-1], outputs=[message, action])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
