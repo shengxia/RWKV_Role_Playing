@@ -77,7 +77,7 @@ class ModelUtils:
         out[self.END_OF_LINE] = self.NEG_INF
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
+      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       for o in occurrence:
         occurrence[o] *= self.penalty_decay
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
@@ -92,9 +92,10 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, temperature, presence_penalty, frequency_penalty, min_len=0, action_start_token=None, action_end_token=None):
+  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, min_len=0, action_start_token=None, action_end_token=None):
     chat_param = {
       'top_p': top_p,
+      'top_k': top_k,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
