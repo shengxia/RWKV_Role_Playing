@@ -28,10 +28,11 @@ class UI:
     file_list = self.__get_file_list_by_extend(path, "sav")
     return file_list
 
-  def __get_file_list_by_extend(self, path, file_extend):
+  def __get_file_list_by_extend(self, path:str, file_extend:str):
       file_list = []
       if os.path.exists(path) and os.path.isdir(path):
         files=os.listdir(path)
+        files.sort()
         for f in files:
           file_name_arr = f.split('.')
           if file_name_arr[-1] == file_extend:
