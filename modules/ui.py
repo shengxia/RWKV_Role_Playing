@@ -55,8 +55,9 @@ class UI:
         save_list.append(f'{bot_name}')
       return save_list
   
-  def __save_config(self, f, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg):
+  def __save_config(self, f, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg, min_len):
     config = {
+      'min_len': min_len,
       'top_p': top_p, 
       'top_k': top_k, 
       'temperature': temperature, 
@@ -67,9 +68,9 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.65, top_k=0, temperature=2, presence_penalty=0.2, frequency_penalty=0.2, cfg=0):
+  def __save_config_role(self, top_p=0.65, top_k=0, temperature=2, presence_penalty=0.2, frequency_penalty=0.2, cfg=0, min_len=0):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.__save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg)
+      self.__save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg, min_len)
   
   # 保存角色
   def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
@@ -223,7 +224,10 @@ class UI:
       configs_role['top_k'] = 0    
     if 'cfg' not in configs_role:
       configs_role['cfg'] = 0
+    if 'min_len' not in configs_role:
+      configs_role['min_len'] = 0
     return_arr = (
+      configs_role['min_len'],
       configs_role['top_p'], 
       configs_role['top_k'], 
       configs_role['temperature'], 
@@ -330,7 +334,7 @@ class UI:
       load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
       save_btn.click(self.__save_save, inputs=[char_dropdown,save_file_name], outputs=[save_dropdown])
       save_update_btn.click(self.__save_update, inputs=[char_dropdown,save_dropdown], outputs=[save_dropdown])
-      save_conf.click(self.__save_config_role, inputs=input_list[2:-1])
+      save_conf.click(self.__save_config_role, inputs=input_list[2:])
       message.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
@@ -349,6 +353,7 @@ class UI:
       test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       reload_list = [
+        min_len,
         top_p,
         top_k, 
         temperature, 

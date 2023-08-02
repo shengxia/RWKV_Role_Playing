@@ -19,7 +19,7 @@ class ModelUtils:
   DOUBLE_END_OF_LINE = 261
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
-  AVOID_REPEAT = '，：？！'
+  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   penalty_decay = 0.996
@@ -64,17 +64,24 @@ class ModelUtils:
     n = f'{name}'
     del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, token_cfg=None, state_cfg=None):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, out_cfg = None, token_cfg=None, state_cfg=None):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
+    if chat_param['action_start_token']:
+      out[chat_param['action_start_token']] = 10
+      if chat_param['cfg'] > 0:
+        out_cfg[chat_param['action_start_token']] = 10
     for i in range(500):
-      if i == 0 and chat_param['action_start_token']:
-        out[chat_param['action_start_token']] = 10
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
         out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
         out[self.END_OF_LINE] = self.NEG_INF
+        if chat_param['cfg'] > 0:
+          out_cfg[self.CHN_PERIOD_END] = self.NEG_INF
+          out_cfg[self.DOUBLE_END_OF_LINE] = self.NEG_INF
+          out_cfg[self.END_OF_LINE] = self.NEG_INF
+          out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
@@ -84,7 +91,6 @@ class ModelUtils:
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       if chat_param['cfg'] > 0:
         out_cfg, token_cfg, state_cfg = self.run_rnn(token_cfg, state_cfg, [token])
-        out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues

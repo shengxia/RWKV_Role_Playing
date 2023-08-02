@@ -70,13 +70,13 @@ class Chat:
       return '', '', self.__generate_cai_chat_html()
     new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
+    out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg,
       min_len, self.role_info.action_start_token, self.role_info.action_end_token
     )
     occurrence = self.__get_occurrence(True)
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, token_cfg, state_cfg) 
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg) 
     return '', '', reply_text
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg, action_front, min_len, replace_message):
@@ -107,26 +107,27 @@ class Chat:
       new = f"{self.role_info.user}: "
       new += f"{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-      token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
+      out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg,
         min_len, self.role_info.action_start_token, self.role_info.action_end_token
       )
       occurrence = self.__get_occurrence()
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, token_cfg, state_cfg)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)
       return '', '', reply_text
     
   def __get_cfg_state(self, new, cfg):
+    out_cfg = None
     token_cfg = None
     state_cfg = None
     if cfg > 0:
       out_cfg, token_cfg, state_cfg = self.__get_init_state()
       out_cfg, token_cfg, state_cfg = self.model_utils.run_rnn(token_cfg, state_cfg, self.model_utils.pipeline.encode(new))
-    return token_cfg, state_cfg
+    return out_cfg, token_cfg, state_cfg
   
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, token_cfg, state_cfg):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, token_cfg, state_cfg)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, out_cfg, token_cfg, state_cfg)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -392,5 +393,7 @@ class Chat:
         for t in bot_token:
           for o in occurrence:
             occurrence[o] *= self.model_utils.penalty_decay
+          if t in self.model_utils.AVOID_REPEAT_TOKENS:
+            continue
           occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence
