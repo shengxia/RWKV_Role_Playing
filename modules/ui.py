@@ -296,7 +296,7 @@ class UI:
               min_len = gr.Slider(minimum=0, maximum=500, step=1, label=self.language_conf['MIN_LEN'])
               top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
               top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
-              temperature = gr.Slider(minimum=0.2, maximum=5.0, step=0.01, label='Temperature')
+              temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
               frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
               cfg = gr.Slider(minimum=0, maximum=2.0, step=0.1, label='cfg factor')

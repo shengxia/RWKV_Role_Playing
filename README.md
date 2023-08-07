@@ -85,6 +85,9 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 
 当然是在[这里](https://huggingface.co/BlinkDL)，请使用RWKV-4-world系列CHNtuned模型，另外，如果使用参数量在1.5B及以下这样的模型，需要把策略改为cuda fp32或cpu fp32，否则会溢出。
 
+另外，我也很推荐这个模型 https://huggingface.co/xiaol/RWKV-claude-4-World-7B-65k 
+这个模型是使用shareClaude进行微调的，且把上下文长度增加到了65k，玩起来效果很棒。
+
 ### 3. top_p、temperature、presence、frequency这几个参数有什么设置技巧吗？
 
 top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输出；temperature值越低，结果就越确定，因为总是选择概率最高的下一个词/token，拉高该值，其他可能的token的概率就会变大，随机性就越大，输出越多样化、越具创造性。
@@ -121,6 +124,7 @@ top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输
 }
 ```
 最近的更新中，我把top_k这个参数给加回来了，感觉在top_p=0.75，temperature=2.5时，把top_k设置成25后，输出文字的逻辑性似乎微妙的好一些。
+还有，也可以试试top=0.7，temperature=0.1这种配置，我感觉这个效果也不错。
 
 ### 4. 模型会在输出回答后，又输出一大堆乱七八糟的内容。
 
