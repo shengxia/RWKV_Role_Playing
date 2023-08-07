@@ -81,7 +81,8 @@ class ModelUtils:
           out_cfg[self.CHN_PERIOD_END] = self.NEG_INF
           out_cfg[self.DOUBLE_END_OF_LINE] = self.NEG_INF
           out_cfg[self.END_OF_LINE] = self.NEG_INF
-          out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
+      if chat_param['cfg'] > 0:
+        out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
