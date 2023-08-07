@@ -5,6 +5,8 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
+from torch.nn import functional as F
+import numpy as np
 import gc
 
 class ModelUtils:
@@ -85,7 +87,10 @@ class ModelUtils:
         out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
+      if not chat_param['tau']:
+        token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
+      else:
+        token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
         occurrence[o] *= self.penalty_decay
       occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
@@ -102,10 +107,10 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None):
     chat_param = {
       'top_p': top_p,
-      'top_k': top_k,
+      'tau': tau,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
@@ -119,4 +124,20 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
+
+  def sample_typical(self, logits, tau, temp):
+    probs = F.softmax(logits.float(), dim=-1)
+    logits = -torch.log(probs)
+    entropy = torch.nansum(logits * probs, dim=-1, keepdim=True)
+    logits = torch.abs(logits - entropy)
+    sorted_ids = torch.argsort(logits)
+    sorted_logits = logits[sorted_ids]
+    sorted_probs = probs[sorted_ids]
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1).cpu().numpy()
+    cutoff = np.sum(cumulative_probs < tau)
+    probs[logits > sorted_logits[cutoff]] = 0
+    if temp != 1.0:
+      probs = probs ** (1.0 / temp)
+    out = torch.multinomial(probs, num_samples=1)[0]
+    return int(out)
   
