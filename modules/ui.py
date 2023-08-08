@@ -297,8 +297,8 @@ class UI:
               top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
               tau = gr.Slider(minimum=0, maximum=1, step=0.01, label='TAU')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
-              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
-              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
+              presence_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.01, label='Presence Penalty')
+              frequency_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.01, label='Frequency Penalty')
               cfg = gr.Slider(minimum=0, maximum=2.0, step=0.1, label='cfg factor')
               with gr.Row():
                 with gr.Column():
