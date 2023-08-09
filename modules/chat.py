@@ -387,13 +387,14 @@ class Chat:
     if is_pre:
       chatbot = chatbot[:-1]
     occurrence = {}
-    for i in chatbot:
-      if i[1]:
-        bot_token = self.model_utils.pipeline.encode(i[1])
-        for t in bot_token:
-          for o in occurrence:
-            occurrence[o] *= self.model_utils.penalty_decay
-          if t in self.model_utils.AVOID_REPEAT_TOKENS:
-            continue
-          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
+    for c in chatbot:
+      for i in c:
+        if i:
+          bot_token = self.model_utils.pipeline.encode(i)
+          for t in bot_token:
+            for o in occurrence:
+              occurrence[o] *= self.model_utils.penalty_decay
+            if t in self.model_utils.AVOID_REPEAT_TOKENS:
+              continue
+            occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence
