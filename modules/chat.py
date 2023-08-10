@@ -390,7 +390,9 @@ class Chat:
     for c in chatbot:
       for i in c:
         if i:
+          i = i.replace(self.role_info.user_chat, '').replace(self.role_info.bot_chat, '')
           bot_token = self.model_utils.pipeline.encode(i)
+          bot_token.reverse()
           for t in bot_token:
             for o in occurrence:
               occurrence[o] *= self.model_utils.penalty_decay

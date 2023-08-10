@@ -21,7 +21,7 @@ class ModelUtils:
   DOUBLE_END_OF_LINE = 261
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：'
+  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：的你我他她它'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   penalty_decay = 0.996
