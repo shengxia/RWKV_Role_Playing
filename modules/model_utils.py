@@ -21,7 +21,7 @@ class ModelUtils:
   DOUBLE_END_OF_LINE = 261
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：的你我他她它'
+  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   penalty_decay = 0.996
@@ -93,7 +93,8 @@ class ModelUtils:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
         occurrence[o] *= self.penalty_decay
-      occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
+      if token not in self.AVOID_REPEAT_TOKENS:
+        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       if chat_param['cfg'] > 0:
         out_cfg, token_cfg, state_cfg = self.run_rnn(token_cfg, state_cfg, [token])

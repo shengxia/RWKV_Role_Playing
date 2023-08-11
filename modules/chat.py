@@ -382,8 +382,8 @@ class Chat:
   
   def __get_occurrence(self, is_pre=False):
     chatbot = copy.deepcopy(self.role_info.chatbot)
-    if len(chatbot) > 3:
-      chatbot = chatbot[-3:]
+    if len(chatbot) > 4:
+      chatbot = chatbot[-4:]
     if is_pre:
       chatbot = chatbot[:-1]
     occurrence = {}
@@ -395,7 +395,7 @@ class Chat:
           bot_token.reverse()
           for t in bot_token:
             for o in occurrence:
-              occurrence[o] *= self.model_utils.penalty_decay
+              occurrence[o] *= 0.999
             if t in self.model_utils.AVOID_REPEAT_TOKENS:
               continue
             occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
