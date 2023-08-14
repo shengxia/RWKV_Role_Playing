@@ -18,7 +18,7 @@ https://github.com/shengxia/RWKV_Role_Playing_API
 
 还玩个屁的Glow，RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4096这个模型效果好的出奇，3B的参数量就能扮演一个不错的赛博小女友，玩了几天我都要喝营养快线了，现在7B的也出来了（RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4096），效果确实强，话说啥时候有14B啊，给我一波升级显卡的动力。
 
-目前我不再支持Raven系列的模型，而是改用World系列的模型了，这个模型在角色扮演上好太多了，我强烈推荐CHNtuned的模型，如果你使用的是老版本的话，可能还需要更新一下RWKV库
+目前我不再支持Raven系列的模型，而是改用World系列的模型了，这个模型在角色扮演上好太多了，我强烈推荐CHNtuned的模型，另外我在FAQ中也推荐了一些其他的模型，他们同样也非常适合角色扮演，如果你使用的是老版本的话，可能还需要更新一下RWKV库
 
 ```
 pip install rwkv --upgrade
@@ -87,6 +87,9 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 
 另外，我也很推荐这个模型 https://huggingface.co/xiaol/RWKV-claude-4-World-7B-65k 
 这个模型是使用shareClaude进行微调的，且把上下文长度增加到了65k，玩起来效果很棒。
+
+还有这个模型 https://huggingface.co/xiaol/rwkv-7B-world-novel-128k
+这个模型使用了大量的小说进行微调，我发现这个模型对动作、场面等描写相当不错，上下文长度为128k，也值得尝试一下。
 
 ### 3. top_p、temperature、presence、frequency这几个参数有什么设置技巧吗？
 
