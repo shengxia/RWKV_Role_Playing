@@ -18,7 +18,7 @@ https://github.com/shengxia/RWKV_Role_Playing_API
 
 还玩个屁的Glow，RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4096这个模型效果好的出奇，3B的参数量就能扮演一个不错的赛博小女友，玩了几天我都要喝营养快线了，现在7B的也出来了（RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4096），效果确实强，话说啥时候有14B啊，给我一波升级显卡的动力。
 
-目前我不再支持Raven系列的模型，而是改用World系列的模型了，这个模型在角色扮演上好太多了，我强烈推荐CHNtuned的模型，如果你使用的是老版本的话，可能还需要更新一下RWKV库
+目前我不再支持Raven系列的模型，而是改用World系列的模型了，这个模型在角色扮演上好太多了，我强烈推荐CHNtuned的模型，另外我在FAQ中也推荐了一些其他的模型，他们同样也非常适合角色扮演，如果你使用的是老版本的话，可能还需要更新一下RWKV库
 
 ```
 pip install rwkv --upgrade
@@ -88,6 +88,9 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 另外，我也很推荐这个模型 https://huggingface.co/xiaol/RWKV-claude-4-World-7B-65k 
 这个模型是使用shareClaude进行微调的，且把上下文长度增加到了65k，玩起来效果很棒。
 
+还有这个模型 https://huggingface.co/xiaol/rwkv-7B-world-novel-128k
+这个模型使用了大量的小说进行微调，我发现这个模型对动作、场面等描写相当不错，上下文长度为128k，也值得尝试一下。
+
 ### 3. top_p、temperature、presence、frequency这几个参数有什么设置技巧吗？
 
 top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输出；temperature值越低，结果就越确定，因为总是选择概率最高的下一个词/token，拉高该值，其他可能的token的概率就会变大，随机性就越大，输出越多样化、越具创造性。
@@ -123,8 +126,9 @@ top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输
   "frequency": 1
 }
 ```
-最近的更新中，我把top_k这个参数给加回来了，感觉在top_p=0.75，temperature=2.5时，把top_k设置成25后，输出文字的逻辑性似乎微妙的好一些。
 还有，也可以试试top=0.7，temperature=0.1这种配置，我感觉这个效果也不错。
+
+另外，我最近加入了一种新的采样方式，当tau这个参数不为0的时候，则启用该方法，该采样方式下，top_p参数将会失效，其他的参数依然可以使用，反正感觉效果也挺微妙的，可以尝试尝试。
 
 ### 4. 模型会在输出回答后，又输出一大堆乱七八糟的内容。
 

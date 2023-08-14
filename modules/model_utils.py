@@ -5,6 +5,8 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
+from torch.nn import functional as F
+import numpy as np
 import gc
 
 class ModelUtils:
@@ -69,6 +71,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['action_start_token']:
+      action_start_token = self.pipeline.encode(self.pipeline.decode(chat_param['action_start_token']).strip())
       out[chat_param['action_start_token']] = 10
       if chat_param['cfg'] > 0:
         out_cfg[chat_param['action_start_token']] = 10
@@ -85,14 +88,25 @@ class ModelUtils:
         out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
+      if not chat_param['tau']:
+        token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
+      else:
+        token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
-        occurrence[o] *= self.penalty_decay
-      occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
+        if occurrence[o] > 1:
+          occurrence[o] *= self.penalty_decay
+      if token not in self.AVOID_REPEAT_TOKENS:
+        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       if chat_param['cfg'] > 0:
         out_cfg, token_cfg, state_cfg = self.run_rnn(token_cfg, state_cfg, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
+      if chat_param['action_start_token']:
+        out[action_start_token] = self.NEG_INF
+        out[chat_param['action_start_token']] = self.NEG_INF
+        if chat_param['cfg'] > 0:
+          out_cfg[action_start_token] = self.NEG_INF
+          out_cfg[chat_param['action_start_token']] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
@@ -102,10 +116,10 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None):
     chat_param = {
       'top_p': top_p,
-      'top_k': top_k,
+      'tau': tau,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
@@ -119,4 +133,20 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
+
+  def sample_typical(self, logits, tau, temp):
+    probs = F.softmax(logits.float(), dim=-1)
+    logits = -torch.log(probs)
+    entropy = torch.nansum(logits * probs, dim=-1, keepdim=True)
+    logits = torch.abs(logits - entropy)
+    sorted_ids = torch.argsort(logits)
+    sorted_logits = logits[sorted_ids]
+    sorted_probs = probs[sorted_ids]
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1).cpu().numpy()
+    cutoff = np.sum(cumulative_probs < tau)
+    probs[logits > sorted_logits[cutoff]] = 0
+    if temp != 1.0:
+      probs = probs ** (1.0 / temp)
+    out = torch.multinomial(probs, num_samples=1)[0]
+    return int(out)
   
