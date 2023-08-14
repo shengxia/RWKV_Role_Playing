@@ -71,6 +71,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['action_start_token']:
+      action_start_token = self.pipeline.encode(self.pipeline.decode(chat_param['action_start_token']).strip())
       out[chat_param['action_start_token']] = 10
       if chat_param['cfg'] > 0:
         out_cfg[chat_param['action_start_token']] = 10
@@ -92,13 +93,20 @@ class ModelUtils:
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
-        occurrence[o] *= self.penalty_decay
+        if occurrence[o] > 1:
+          occurrence[o] *= self.penalty_decay
       if token not in self.AVOID_REPEAT_TOKENS:
         occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       if chat_param['cfg'] > 0:
         out_cfg, token_cfg, state_cfg = self.run_rnn(token_cfg, state_cfg, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
+      if chat_param['action_start_token']:
+        out[action_start_token] = self.NEG_INF
+        out[chat_param['action_start_token']] = self.NEG_INF
+        if chat_param['cfg'] > 0:
+          out_cfg[action_start_token] = self.NEG_INF
+          out_cfg[chat_param['action_start_token']] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1

@@ -325,7 +325,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat('chat')
-    if len(data[1]) < 60000:
+    if len(data[1]) < 4000:
       return False
     return True
 
@@ -382,21 +382,21 @@ class Chat:
   
   def __get_occurrence(self, is_pre=False):
     chatbot = copy.deepcopy(self.role_info.chatbot)
-    if len(chatbot) > 4:
-      chatbot = chatbot[-4:]
+    if len(chatbot) > 3:
+      chatbot = chatbot[-3:]
     if is_pre:
       chatbot = chatbot[:-1]
     occurrence = {}
     for c in chatbot:
-      for i in c:
-        if i:
-          i = i.replace(self.role_info.user_chat, '').replace(self.role_info.bot_chat, '')
-          bot_token = self.model_utils.pipeline.encode(i)
-          bot_token.reverse()
-          for t in bot_token:
-            for o in occurrence:
+      if c[1]:
+        i = c[1].replace(self.role_info.user_chat, '').replace(self.role_info.bot_chat, '')
+        bot_token = self.model_utils.pipeline.encode(i)
+        bot_token.reverse()
+        for t in bot_token:
+          if t in self.model_utils.AVOID_REPEAT_TOKENS:
+            continue
+          for o in occurrence:
+            if occurrence[o] > 1:
               occurrence[o] *= 0.999
-            if t in self.model_utils.AVOID_REPEAT_TOKENS:
-              continue
-            occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
+          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence
