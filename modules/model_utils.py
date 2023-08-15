@@ -71,7 +71,6 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['action_start_token']:
-      action_start_token = self.pipeline.encode(self.pipeline.decode(chat_param['action_start_token']).strip())
       out[chat_param['action_start_token']] = 10
       if chat_param['cfg'] > 0:
         out_cfg[chat_param['action_start_token']] = 10
@@ -84,6 +83,10 @@ class ModelUtils:
           out_cfg[self.CHN_PERIOD_END] = self.NEG_INF
           out_cfg[self.DOUBLE_END_OF_LINE] = self.NEG_INF
           out_cfg[self.END_OF_LINE] = self.NEG_INF
+      elif i > 120:
+        out[self.CHN_PERIOD_END] += 1
+        out[self.DOUBLE_END_OF_LINE] += 1
+        out[self.END_OF_LINE] += 1
       if chat_param['cfg'] > 0:
         out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
@@ -101,12 +104,6 @@ class ModelUtils:
       if chat_param['cfg'] > 0:
         out_cfg, token_cfg, state_cfg = self.run_rnn(token_cfg, state_cfg, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
-      if chat_param['action_start_token']:
-        out[action_start_token] = self.NEG_INF
-        out[chat_param['action_start_token']] = self.NEG_INF
-        if chat_param['cfg'] > 0:
-          out_cfg[action_start_token] = self.NEG_INF
-          out_cfg[chat_param['action_start_token']] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1

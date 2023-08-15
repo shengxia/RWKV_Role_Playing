@@ -248,7 +248,7 @@ class Chat:
     chatbot = copy.deepcopy(self.role_info.chatbot)
     chatbot.reverse()
     for row in chatbot:
-      msg = row[1].replace('\n', '<br>').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
+      msg = row[1].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
       output += f"""
         <div class="message message_c">
           <div class="circle-bot">
@@ -265,7 +265,7 @@ class Chat:
         </div>
       """
       if row[0] != None:
-        msg = row[0].replace('\n', '<br>').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
+        msg = row[0].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -279,7 +279,7 @@ class Chat:
           </div>
         """
     output += "</div>"
-    return output.replace('<br><br>', '<br>')
+    return output
   
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
