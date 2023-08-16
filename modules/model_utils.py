@@ -83,7 +83,7 @@ class ModelUtils:
           out_cfg[self.CHN_PERIOD_END] = self.NEG_INF
           out_cfg[self.DOUBLE_END_OF_LINE] = self.NEG_INF
           out_cfg[self.END_OF_LINE] = self.NEG_INF
-      elif i > 120:
+      elif i > 100:
         out[self.CHN_PERIOD_END] += 1
         out[self.DOUBLE_END_OF_LINE] += 1
         out[self.END_OF_LINE] += 1
@@ -95,6 +95,8 @@ class ModelUtils:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
+      if chat_param['temperature'] > 0.2:
+        chat_param['temperature'] -= 0.01
       for o in occurrence:
         if occurrence[o] > 1:
           occurrence[o] *= self.penalty_decay
