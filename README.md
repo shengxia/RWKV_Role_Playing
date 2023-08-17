@@ -89,7 +89,7 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 这个模型是使用shareClaude进行微调的，且把上下文长度增加到了65k，玩起来效果很棒。
 
 还有这个模型 https://huggingface.co/xiaol/rwkv-7B-world-novel-128k
-这个模型使用了大量的小说进行微调，我发现这个模型对动作、场面等描写相当不错，上下文长度为128k，也值得尝试一下。
+这个模型使用了大量的小说进行微调，我发现这个模型对动作、场面等描写相当不错，而且最可贵的是，这个模型好像没啥善恶观，自由度挺高的，上下文长度为128k，也值得尝试一下。
 
 ### 3. top_p、temperature、presence、frequency这几个参数有什么设置技巧吗？
 
