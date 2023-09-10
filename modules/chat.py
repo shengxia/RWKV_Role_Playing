@@ -23,7 +23,7 @@ class Chat:
     self.chunked_index = None
     self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, 
                               example_message, use_qa, str(uuid.uuid1()).replace('-', ''))
-    if action_start and action_start in example_message and action_end in example_message:
+    if action_start and action_end:
       self.role_info.action_start_token = self.model_utils.pipeline.encode(f' {action_start}')[0]
       self.role_info.action_end_token = self.model_utils.pipeline.encode(action_end)[0]
     if os.path.exists(f'save/{file_name}.sav'):
@@ -61,7 +61,7 @@ class Chat:
     self.chunked_index = None
     return None, None, self.__generate_cai_chat_html()
   
-  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len):
+  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -73,13 +73,14 @@ class Chat:
     out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
       top_p, tau, temperature, presence_penalty, frequency_penalty, cfg,
-      min_len, self.role_info.action_start_token, self.role_info.action_end_token
+      min_len, self.role_info.action_start_token, self.role_info.action_end_token,
+      force_action
     )
     occurrence = self.__get_occurrence(True)
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg) 
     return '', '', reply_text
   
-  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, action_front, min_len, replace_message):
+  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, action_front, min_len, replace_message, force_action):
     if self.chunked_index:
       self.__flush_chat()
     message = message.strip().replace('\r\n','\n') if message else ''
@@ -111,7 +112,8 @@ class Chat:
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
         top_p, tau, temperature, presence_penalty, frequency_penalty, cfg,
-        min_len, self.role_info.action_start_token, self.role_info.action_end_token
+        min_len, self.role_info.action_start_token, self.role_info.action_end_token,
+        force_action
       )
       occurrence = self.__get_occurrence()
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)

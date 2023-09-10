@@ -70,10 +70,11 @@ class ModelUtils:
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    if chat_param['action_start_token']:
-      out[chat_param['action_start_token']] = 10
-      if chat_param['cfg'] > 0:
-        out_cfg[chat_param['action_start_token']] = 10
+    if chat_param['force_action']:
+      if chat_param['action_start_token']:
+        out[chat_param['action_start_token']] = 10
+        if chat_param['cfg'] > 0:
+          out_cfg[chat_param['action_start_token']] = 10
     for i in range(500):
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
@@ -83,10 +84,6 @@ class ModelUtils:
           out_cfg[self.CHN_PERIOD_END] = self.NEG_INF
           out_cfg[self.DOUBLE_END_OF_LINE] = self.NEG_INF
           out_cfg[self.END_OF_LINE] = self.NEG_INF
-      elif i > 100:
-        out[self.CHN_PERIOD_END] += 1
-        out[self.DOUBLE_END_OF_LINE] += 1
-        out[self.END_OF_LINE] += 1
       if chat_param['cfg'] > 0:
         out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
@@ -95,8 +92,6 @@ class ModelUtils:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
-      if chat_param['temperature'] > 0.2:
-        chat_param['temperature'] -= 0.01
       for o in occurrence:
         if occurrence[o] > 1:
           occurrence[o] *= self.penalty_decay
@@ -115,7 +110,7 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None, force_action=False):
     chat_param = {
       'top_p': top_p,
       'tau': tau,
@@ -125,7 +120,8 @@ class ModelUtils:
       'cfg': cfg,
       'min_len': min_len,
       'action_start_token': action_start_token,
-      'action_end_token': action_end_token
+      'action_end_token': action_end_token,
+      'force_action': force_action
     }
     return chat_param
   
