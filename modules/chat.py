@@ -33,6 +33,7 @@ class Chat:
       if greeting:
         self.role_info.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
+    self.model_utils.remove_stat('chat_pre')
     return self.__generate_cai_chat_html()
 
   def load_state(self, file_name:str):

@@ -64,7 +64,8 @@ class ModelUtils:
   
   def remove_stat(self, name):
     n = f'{name}'
-    del self.all_state[n]
+    if n in self.all_state.keys():
+      del self.all_state[n]
   
   def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, out_cfg = None, token_cfg=None, state_cfg=None):
     self.clear_cache()
