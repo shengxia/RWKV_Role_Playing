@@ -14,9 +14,9 @@ class UI:
   lock_flag_role = True
   language_conf = None
 
-  def __init__(self, model_utils:ModelUtils, lang):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length):
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils, lang)
+    self.chat_model = Chat(model_utils, lang, chat_length)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
       self.language_conf = json.loads(f.read())
 
@@ -74,7 +74,7 @@ class UI:
       self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action)
   
   # 保存角色
-  def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
+  def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', bot_personality='', example_message='', use_qa=False):
     if file_name == '' and bot != '':
       file_name = bot
     with open(f"{self.char_path}/{file_name}.json", 'w', encoding='utf8') as f:
@@ -85,6 +85,7 @@ class UI:
         'action_end': action_end,
         'greeting': greeting, 
         'bot_persona': bot_persona, 
+        'bot_personality': bot_personality, 
         'example_message': example_message,
         'use_qa': use_qa
       }
@@ -97,7 +98,7 @@ class UI:
         os.remove(save_file)
     chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
                                                char['action_end'], char['greeting'], char['bot_persona'], 
-                                               char['example_message'], char['use_qa'])
+                                               char['bot_personality'], char['example_message'], char['use_qa'])
     char_list = self.__get_json_files(self.char_path)
     return gr.Dropdown.update(choices=char_list), chatbot
 
@@ -107,7 +108,7 @@ class UI:
       raise gr.Error(self.language_conf['LOAD_CHAR_ERROR'])
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    for key in ['user', 'bot', 'action_start', 'action_end', 'greeting', 'bot_persona', 'example_message', 'use_qa']:
+    for key in ['user', 'bot', 'action_start', 'action_end', 'greeting', 'bot_persona', 'bot_personality', 'example_message', 'use_qa']:
       if key not in char.keys():
         if key == 'use_qa':
           char[key] = False
@@ -115,7 +116,7 @@ class UI:
           char[key] = ''
     chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
                                                char['action_end'], char['greeting'], char['bot_persona'], 
-                                               char['example_message'], char['use_qa'])
+                                               char['bot_personality'], char['example_message'], char['use_qa'])
     return_arr = (
       file_name,
       char['user'], 
@@ -124,6 +125,7 @@ class UI:
       char['action_end'], 
       char['greeting'], 
       char['bot_persona'],
+      char['bot_personality'],
       char['example_message'],
       char['use_qa'],
       chatbot,
@@ -295,14 +297,14 @@ class UI:
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
+              force_action = gr.Checkbox(label='强制输出动作')
               min_len = gr.Slider(minimum=0, maximum=500, step=1, label=self.language_conf['MIN_LEN'])
               top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
               tau = gr.Slider(minimum=0, maximum=1, step=0.01, label='TAU')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
-              presence_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.01, label='Presence Penalty')
-              frequency_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.01, label='Frequency Penalty')
+              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
+              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
               cfg = gr.Slider(minimum=0, maximum=2.0, step=0.1, label='cfg factor')
-              force_action = gr.Checkbox(label='强制输出动作')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
@@ -322,13 +324,14 @@ class UI:
           with gr.Column():
             greeting = gr.TextArea(placeholder=self.language_conf['GREETING_PH'], label=self.language_conf['GREETING_LB'], lines=2)
             bot_persona = gr.TextArea(placeholder=self.language_conf['PERSONA_PH'], label=self.language_conf['PERSONA_LB'], lines=7)
+            bot_personality = gr.TextArea(placeholder='角色性格', label='角色性格', lines=2)
         with gr.Row():
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
       input_list = [message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action]
       output_list = [message, action, chatbot]
-      char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
+      char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, bot_personality, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)

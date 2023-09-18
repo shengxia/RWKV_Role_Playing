@@ -10,18 +10,20 @@ class Chat:
   lang = ''
   role_info = None
   chunked_index = None
+  chat_length = 4000
 
-  def __init__(self, model_utils:ModelUtils, lang):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length):
     self.model_utils = model_utils
     self.lang = lang
+    self.chat_length = chat_length
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
   
-  def load_init_prompt(self, file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa):
+  def load_init_prompt(self, file_name, user, bot, action_start, action_end, greeting, bot_persona, bot_personality, example_message, use_qa):
     model_tokens = []
     model_state = None
     self.chunked_index = None
-    self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, 
+    self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, bot_personality,
                               example_message, use_qa, str(uuid.uuid1()).replace('-', ''))
     if action_start and action_end:
       self.role_info.action_start_token = self.model_utils.pipeline.encode(f' {action_start}')[0]
@@ -33,7 +35,6 @@ class Chat:
       if greeting:
         self.role_info.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
-    self.model_utils.remove_stat('chat_pre')
     return self.__generate_cai_chat_html()
 
   def load_state(self, file_name:str):
@@ -69,7 +70,11 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
     except:
       return '', '', self.__generate_cai_chat_html()
-    new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}:"
+    system_msg = ''
+    if self.role_info.bot_personality:
+      system_msg = self.__get_system_prompt()
+    new = f"{system_msg}{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n"
+    new = f'{new}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
@@ -106,7 +111,10 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: "
+      system_msg = ''
+      if self.role_info.bot_personality:
+        system_msg = self.__get_system_prompt()
+      new = f"{system_msg}{self.role_info.user}: "
       new += f"{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
@@ -119,6 +127,9 @@ class Chat:
       occurrence = self.__get_occurrence()
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)
       return '', '', reply_text
+    
+  def __get_system_prompt(self):
+    return f"{self.role_info.bot_chat}的性格是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复。\n\n"
     
   def __get_cfg_state(self, new, cfg):
     out_cfg = None
@@ -314,7 +325,7 @@ class Chat:
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if self.role_info.greeting:
       init_prompt_final += f"{self.role_info.bot}: {self.role_info.greeting}\n\n"
-    return init_prompt_final
+    return f'{init_prompt_final}'
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat')
@@ -328,7 +339,7 @@ class Chat:
   
   def check_token_count(self):
     data = self.model_utils.load_all_stat('chat')
-    if len(data[1]) < 4000:
+    if len(data[1]) < self.chat_length:
       return False
     return True
 
@@ -400,6 +411,6 @@ class Chat:
             continue
           for o in occurrence:
             if occurrence[o] > 1:
-              occurrence[o] *= 0.999
+              occurrence[o] *= 0.996
           occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence
