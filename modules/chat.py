@@ -129,7 +129,7 @@ class Chat:
       return '', '', reply_text
     
   def __get_system_prompt(self):
-    return f"{self.role_info.bot_chat}的性格是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复。\n\n"
+    return f"{self.role_info.bot_chat}的性格是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复，注意不要过度回复。\n\n"
     
   def __get_cfg_state(self, new, cfg):
     out_cfg = None
