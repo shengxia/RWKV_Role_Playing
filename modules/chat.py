@@ -11,6 +11,7 @@ class Chat:
   role_info = None
   chunked_index = None
   chat_length = 4000
+  retry_count = 0
 
   def __init__(self, model_utils:ModelUtils, lang, chat_length):
     self.model_utils = model_utils
@@ -61,6 +62,7 @@ class Chat:
     if os.path.exists(save_file):
       os.remove(save_file)
     self.chunked_index = None
+    self.retry_count = 0
     return None, None, self.__generate_cai_chat_html()
   
   def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action):
@@ -70,11 +72,15 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
     except:
       return '', '', self.__generate_cai_chat_html()
-    system_msg = ''
-    if self.role_info.bot_personality:
-      system_msg = self.__get_system_prompt()
-    new = f"{system_msg}{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n"
-    new = f'{new}{self.role_info.bot}:'
+    if not self.role_info.chatbot[-1][0]:
+      new = self.__empty_msg() + '\n\n'
+    else:
+      system_msg = ''
+      if self.retry_count > 3:
+        if self.role_info.bot_personality:
+          system_msg = self.__get_system_prompt()
+      new = f"{self.role_info.user}: {system_msg}{self.role_info.chatbot[-1][0]}\n\n"
+    new = f'{new}{self.role_info.bot}: {self.role_info.action_start}{self.role_info.bot_chat}深吸了一口气，让自己的动作和语言变得更加准确{self.role_info.action_end}'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
@@ -84,6 +90,7 @@ class Chat:
     )
     occurrence = self.__get_occurrence(True)
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg) 
+    self.retry_count += 1
     return '', '', reply_text
   
   def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, action_front, min_len, replace_message, force_action):
@@ -111,11 +118,10 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      system_msg = ''
-      if self.role_info.bot_personality:
-        system_msg = self.__get_system_prompt()
-      new = f"{system_msg}{self.role_info.user}: "
-      new += f"{msg}\n\n{self.role_info.bot}:"
+      new = f"{self.role_info.user}: "
+      if not msg:
+        new = self.__empty_msg() + new
+      new += f"{msg}\n\n{self.role_info.bot}: {self.role_info.action_start}{self.role_info.bot_chat}知道自己是睿智且富有逻辑的，也明白如何处理现在的情况{self.role_info.action_end}"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
       self.role_info.chatbot += [[msg, None]]
@@ -126,11 +132,15 @@ class Chat:
       )
       occurrence = self.__get_occurrence()
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)
+      self.retry_count = 0
       return '', '', reply_text
     
   def __get_system_prompt(self):
-    return f"{self.role_info.bot_chat}的性格是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复，注意不要过度回复。\n\n"
-    
+    return f"提示：根据以下描述来扮演{self.role_info.bot_chat}，{self.role_info.bot_chat}的设定是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复，注意不要过度回复。\n"
+
+  def __empty_msg(self):
+    return f"提示：继续扮演{self.role_info.bot_chat}来发言，使用生动合理的描述或回复以推进剧情的发展，注意不要过度回复。"
+  
   def __get_cfg_state(self, new, cfg):
     out_cfg = None
     token_cfg = None
@@ -191,6 +201,7 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str2))
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.chunked_index = None
+    self.retry_count = 0
 
   def __save_log(self):
     os.makedirs(f'log/{self.role_info.file_name}/', exist_ok=True)
@@ -262,23 +273,24 @@ class Chat:
     chatbot = copy.deepcopy(self.role_info.chatbot)
     chatbot.reverse()
     for row in chatbot:
-      msg = row[1].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
-      output += f"""
-        <div class="message message_c">
-          <div class="circle-bot">
-            {img_bot}
-          </div>
-          <div class="text_c">
-            <div class="username">
-              {self.role_info.bot_chat}
+      if row[1]:
+        msg = row[1].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
+        output += f"""
+          <div class="message message_c">
+            <div class="circle-bot">
+              {img_bot}
             </div>
-            <div class="message-body message-body-c">
-              {msg}
+            <div class="text_c">
+              <div class="username">
+                {self.role_info.bot_chat}
+              </div>
+              <div class="message-body message-body-c">
+                {msg}
+              </div>
             </div>
           </div>
-        </div>
-      """
-      if row[0] != None:
+        """
+      if row[0]:
         msg = row[0].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
         output += f"""
           <div class="message message_m">
