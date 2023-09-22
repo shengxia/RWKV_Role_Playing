@@ -315,7 +315,12 @@ class Chat:
     return chat_str
   
   def __get_init_prompt(self):
-    em = self.role_info.example_message.replace('<bot>', self.role_info.bot_chat).replace('<user>', self.role_info.user_chat)
+    em = self.role_info.example_message.replace(
+      "<bot>:", f"{self.role_info.bot}:"
+      ).replace("<user>:", f"{self.role_info.user}:"
+      ) .replace("<bot>", self.role_info.bot_chat
+      ).replace("<user>", self.role_info.user_chat)
+        
     init_prompt = {
       'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话：",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
