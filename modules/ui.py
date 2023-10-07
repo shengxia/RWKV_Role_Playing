@@ -42,12 +42,12 @@ class UI:
   # 更新角色列表
   def __update_chars_list(self):
     char_list = self.__get_json_files(self.char_path)
-    return gr.Dropdown.update(choices=char_list)
+    return gr.Dropdown(choices=char_list)
   
   # 更新对话记录列表
   def __update_save_list(self, bot_name):
     save_list = self.__get_save_list(bot_name)
-    return gr.Dropdown.update(choices=save_list)
+    return gr.Dropdown(choices=save_list)
 
   def __get_save_list(self, bot_name):
       save_list = [ f'{bot_name}/' + i for i in self.__get_save_files(f'{self.save_path}/{bot_name}')]
@@ -100,7 +100,7 @@ class UI:
                                                char['action_end'], char['greeting'], char['bot_persona'], 
                                                char['bot_personality'], char['example_message'], char['use_qa'])
     char_list = self.__get_json_files(self.char_path)
-    return gr.Dropdown.update(choices=char_list), chatbot
+    return gr.Dropdown(choices=char_list), chatbot
 
   # 载入角色
   def __load_char(self, file_name):
@@ -130,13 +130,13 @@ class UI:
       char['use_qa'],
       chatbot,
       self.__update_save_list(file_name),
-      gr.Textbox.update(interactive=True), 
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True)
+      gr.Textbox(interactive=True), 
+      gr.Textbox(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True)
     )
     return return_arr
 
@@ -148,25 +148,25 @@ class UI:
       file_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     save_path=f'{bot}/{file_name}'
     self.chat_model.save_chat_to(save_path)
-    return (gr.Dropdown.update(choices=self.__get_save_list(bot),value=save_path),)
+    return (gr.Dropdown(choices=self.__get_save_list(bot),value=save_path),)
 
   def __save_update(self, bot, file_name):
     self.chat_model.save_chat_to(file_name)
-    return (gr.Dropdown.update(choices=self.__get_save_list(bot),value=file_name),)
+    return (gr.Dropdown(choices=self.__get_save_list(bot),value=file_name),)
 
   def __confirm_delete(self):
     return_arr = (
-      gr.Button.update(visible=False),
-      gr.Button.update(visible=True),
-      gr.Button.update(visible=True)
+      gr.Button(visible=False),
+      gr.Button(visible=True),
+      gr.Button(visible=True)
     )
     return return_arr
   
   def __confirm_cancel(self):
     return_arr = (
-      gr.Button.update(visible=True),
-      gr.Button.update(visible=False),
-      gr.Button.update(visible=False)
+      gr.Button(visible=True),
+      gr.Button(visible=False),
+      gr.Button(visible=False)
     )
     return return_arr
 
@@ -181,14 +181,14 @@ class UI:
       text,
       action_text,
       chatbot,
-      gr.Textbox.update(show_label=show_label),
-      gr.Textbox.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive),
-      gr.Checkbox.update(value=False)
+      gr.Textbox(show_label=show_label),
+      gr.Textbox(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive),
+      gr.Checkbox(value=False)
     )
     return result
   
@@ -196,13 +196,13 @@ class UI:
     if self.chat_model.check_token_count():
       self.chat_model.arrange_token()
     result = (
-      gr.Textbox.update(show_label=False),
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True)
+      gr.Textbox(show_label=False),
+      gr.Textbox(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True)
     )
     return result
 
@@ -212,9 +212,9 @@ class UI:
       message,
       action,
       chatbot,
-      gr.Button.update(visible=True),
-      gr.Button.update(visible=False),
-      gr.Button.update(visible=False)
+      gr.Button(visible=True),
+      gr.Button(visible=False),
+      gr.Button(visible=False)
     )
     return return_arr
     
@@ -238,7 +238,7 @@ class UI:
       configs_role['frequency'], 
       configs_role['cfg'], 
       configs_role['force_action'], 
-      gr.Dropdown.update(choices=char_list)
+      gr.Dropdown(choices=char_list)
     )
     return return_arr
 

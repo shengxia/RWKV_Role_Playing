@@ -67,10 +67,12 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, out_cfg = None, token_cfg=None, state_cfg=None):
+  def get_reply(self, model_tokens, model_state, out, chat_param, out_cfg = None, token_cfg=None, state_cfg=None):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
+    occurrence = {}
+    out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
     if chat_param['force_action']:
       if chat_param['action_start_token']:
         out[chat_param['action_start_token']] = 10
@@ -94,8 +96,7 @@ class ModelUtils:
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
-        if occurrence[o] > 1:
-          occurrence[o] *= self.penalty_decay
+        occurrence[o] *= self.penalty_decay
       if token not in self.AVOID_REPEAT_TOKENS:
         occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])

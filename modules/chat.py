@@ -80,7 +80,7 @@ class Chat:
         if self.role_info.bot_personality:
           system_msg = self.__get_system_prompt()
       new = f"{self.role_info.user}: {system_msg}{self.role_info.chatbot[-1][0]}\n\n"
-    new = f'{new}{self.role_info.bot}: {self.role_info.action_start}{self.role_info.bot_chat}深吸了一口气，让自己的动作和语言变得更加准确{self.role_info.action_end}'
+    new = f'{new}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
@@ -88,8 +88,7 @@ class Chat:
       min_len, self.role_info.action_start_token, self.role_info.action_end_token,
       force_action
     )
-    occurrence = self.__get_occurrence(True)
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg) 
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, out_cfg, token_cfg, state_cfg) 
     self.retry_count += 1
     return '', '', reply_text
   
@@ -121,7 +120,7 @@ class Chat:
       new = f"{self.role_info.user}: "
       if not msg:
         new = self.__empty_msg() + new
-      new += f"{msg}\n\n{self.role_info.bot}: {self.role_info.action_start}{self.role_info.bot_chat}知道自己是睿智且富有逻辑的，也明白如何处理现在的情况{self.role_info.action_end}"
+      new += f"{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
       self.role_info.chatbot += [[msg, None]]
@@ -130,16 +129,15 @@ class Chat:
         min_len, self.role_info.action_start_token, self.role_info.action_end_token,
         force_action
       )
-      occurrence = self.__get_occurrence()
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, out_cfg, token_cfg, state_cfg)
       self.retry_count = 0
       return '', '', reply_text
     
   def __get_system_prompt(self):
-    return f"提示：根据以下描述来扮演{self.role_info.bot_chat}，{self.role_info.bot_chat}的设定是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复，注意不要过度回复。\n"
+    return f"根据以下描述来扮演{self.role_info.bot_chat}，{self.role_info.bot_chat}的设定是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复，注意不要过度回复。\n"
 
   def __empty_msg(self):
-    return f"提示：继续扮演{self.role_info.bot_chat}来发言，使用生动合理的描述或回复以推进剧情的发展，注意不要过度回复。"
+    return f"继续扮演{self.role_info.bot_chat}来发言，使用生动合理的描述或回复以推进剧情的发展，注意不要过度回复。"
   
   def __get_cfg_state(self, new, cfg):
     out_cfg = None
@@ -150,8 +148,8 @@ class Chat:
       out_cfg, token_cfg, state_cfg = self.model_utils.run_rnn(token_cfg, state_cfg, self.model_utils.pipeline.encode(new))
     return out_cfg, token_cfg, state_cfg
   
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, out_cfg, token_cfg, state_cfg)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, out_cfg, token_cfg, state_cfg):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, out_cfg, token_cfg, state_cfg)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -318,9 +316,8 @@ class Chat:
     em = self.role_info.example_message.replace(
       "<bot>:", f"{self.role_info.bot}:"
       ).replace("<user>:", f"{self.role_info.user}:"
-      ) .replace("<bot>", self.role_info.bot_chat
+      ).replace("<bot>", self.role_info.bot_chat
       ).replace("<user>", self.role_info.user_chat)
-        
     init_prompt = {
       'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话：",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
@@ -410,24 +407,3 @@ class Chat:
         if i[1] == 'action':
           action = i[0]
     return chat, action
-  
-  def __get_occurrence(self, is_pre=False):
-    chatbot = copy.deepcopy(self.role_info.chatbot)
-    if len(chatbot) > 3:
-      chatbot = chatbot[-3:]
-    if is_pre:
-      chatbot = chatbot[:-1]
-    occurrence = {}
-    for c in chatbot:
-      if c[1]:
-        i = c[1].replace(self.role_info.user_chat, '').replace(self.role_info.bot_chat, '')
-        bot_token = self.model_utils.pipeline.encode(i)
-        bot_token.reverse()
-        for t in bot_token:
-          if t in self.model_utils.AVOID_REPEAT_TOKENS:
-            continue
-          for o in occurrence:
-            if occurrence[o] > 1:
-              occurrence[o] *= 0.996
-          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
-    return occurrence
