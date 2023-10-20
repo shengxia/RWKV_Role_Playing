@@ -34,8 +34,6 @@
   "BOT_LB": "character name",
   "GREETING_PH": "greeting",
   "GREETING_LB": "greeting",
-  "AC_START_LB": "narration start symbol",
-  "AC_END_LB": "narration end symbol",
   "PERSONA_PH": "character's personality",
   "PERSONA_LB": "character's personality",
   "EXAMPLE_DIA": "example dialog",

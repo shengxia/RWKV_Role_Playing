@@ -23,10 +23,15 @@
   line-height: 1.428571429;
 }
 
-.message p {
-  color: #999 !important;
+.message p{
   line-height: 1.428571429 !important;
   margin-bottom: 0px !important;
+}
+
+.message p em {
+  color: #999 !important;
+  margin-bottom: 0px !important;
+  display: block;
 }
 
 .message_c {

@@ -74,18 +74,15 @@ class UI:
       self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action)
   
   # 保存角色
-  def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', bot_personality='', example_message='', use_qa=False):
+  def __save_char(self, file_name='', user='', bot='', greeting='', bot_persona='', example_message='', use_qa=False):
     if file_name == '' and bot != '':
       file_name = bot
     with open(f"{self.char_path}/{file_name}.json", 'w', encoding='utf8') as f:
       char = {
         'user': user, 
         'bot': bot, 
-        'action_start': action_start,
-        'action_end': action_end,
         'greeting': greeting, 
         'bot_persona': bot_persona, 
-        'bot_personality': bot_personality, 
         'example_message': example_message,
         'use_qa': use_qa
       }
@@ -96,11 +93,21 @@ class UI:
       save_file = f'save/{file_name}.sav'
       if os.path.exists(save_file):
         os.remove(save_file)
-    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
-                                               char['action_end'], char['greeting'], char['bot_persona'], 
-                                               char['bot_personality'], char['example_message'], char['use_qa'])
+    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
+                                               char['example_message'], char['use_qa'])
     char_list = self.__get_json_files(self.char_path)
-    return gr.Dropdown(choices=char_list), chatbot
+    return_arr = (
+      gr.Dropdown(choices=char_list),
+      chatbot,
+      gr.Textbox(interactive=True), 
+      gr.Textbox(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True)
+    )
+    return return_arr
 
   # 载入角色
   def __load_char(self, file_name):
@@ -108,24 +115,20 @@ class UI:
       raise gr.Error(self.language_conf['LOAD_CHAR_ERROR'])
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    for key in ['user', 'bot', 'action_start', 'action_end', 'greeting', 'bot_persona', 'bot_personality', 'example_message', 'use_qa']:
+    for key in ['user', 'bot', 'greeting', 'bot_persona', 'example_message', 'use_qa']:
       if key not in char.keys():
         if key == 'use_qa':
           char[key] = False
         else:
           char[key] = ''
-    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
-                                               char['action_end'], char['greeting'], char['bot_persona'], 
-                                               char['bot_personality'], char['example_message'], char['use_qa'])
+    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
+                                               char['example_message'], char['use_qa'])
     return_arr = (
       file_name,
       char['user'], 
       char['bot'], 
-      char['action_start'], 
-      char['action_end'], 
       char['greeting'], 
       char['bot_persona'],
-      char['bot_personality'],
       char['example_message'],
       char['use_qa'],
       chatbot,
@@ -316,22 +319,16 @@ class UI:
             user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
             bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
             use_qa = gr.Checkbox(label=self.language_conf['QA_REPLACE'])
-            with gr.Row():
-              with gr.Column(min_width=100):
-                action_start = gr.Textbox(placeholder=self.language_conf['AC_START_LB'], label=self.language_conf['AC_START_LB'])
-              with gr.Column(min_width=100):
-                action_end = gr.Textbox(placeholder=self.language_conf['AC_END_LB'], label=self.language_conf['AC_END_LB'])
           with gr.Column():
             greeting = gr.TextArea(placeholder=self.language_conf['GREETING_PH'], label=self.language_conf['GREETING_LB'], lines=2)
             bot_persona = gr.TextArea(placeholder=self.language_conf['PERSONA_PH'], label=self.language_conf['PERSONA_LB'], lines=7)
-            bot_personality = gr.TextArea(placeholder='角色性格', label='角色性格', lines=2)
         with gr.Row():
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
       input_list = [message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action]
       output_list = [message, action, chatbot]
-      char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, bot_personality, example_message, use_qa, chatbot]
+      char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)
@@ -345,7 +342,7 @@ class UI:
       action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
-      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot])
+      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot] + interactive_list)
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-3], outputs=[message, action])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])

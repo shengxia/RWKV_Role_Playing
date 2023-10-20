@@ -2,6 +2,7 @@ from modules.model_utils import ModelUtils
 from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
+import markdown2
 
 class Chat:
   
@@ -20,15 +21,12 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
   
-  def load_init_prompt(self, file_name, user, bot, action_start, action_end, greeting, bot_persona, bot_personality, example_message, use_qa):
+  def load_init_prompt(self, file_name, user, bot, greeting, bot_persona, example_message, use_qa):
     model_tokens = []
     model_state = None
     self.chunked_index = None
-    self.role_info = RoleInfo(file_name, [], user, bot, action_start, action_end, greeting, bot_persona, bot_personality,
-                              example_message, use_qa, str(uuid.uuid1()).replace('-', ''))
-    if action_start and action_end:
-      self.role_info.action_start_token = self.model_utils.pipeline.encode(f' {action_start}')[0]
-      self.role_info.action_end_token = self.model_utils.pipeline.encode(action_end)[0]
+    self.role_info = RoleInfo(file_name, [], user, bot, greeting, bot_persona, example_message, 
+                              use_qa, str(uuid.uuid1()).replace('-', ''))
     if os.path.exists(f'save/{file_name}.sav'):
       self.load_state(file_name)
     else:
@@ -75,20 +73,16 @@ class Chat:
     if not self.role_info.chatbot[-1][0]:
       new = self.__empty_msg() + '\n\n'
     else:
-      system_msg = ''
-      if self.retry_count > 3:
-        if self.role_info.bot_personality:
-          system_msg = self.__get_system_prompt()
-      new = f"{self.role_info.user}: {system_msg}{self.role_info.chatbot[-1][0]}\n\n"
+      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n"
     new = f'{new}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
       top_p, tau, temperature, presence_penalty, frequency_penalty, cfg,
-      min_len, self.role_info.action_start_token, self.role_info.action_end_token,
-      force_action
+      min_len, force_action
     )
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, out_cfg, token_cfg, state_cfg) 
+    occurrence = self.__get_occurrence(True)
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg) 
     self.retry_count += 1
     return '', '', reply_text
   
@@ -100,10 +94,10 @@ class Chat:
     msg = f"{message}"
     if action_front:
       if action:
-        msg = f"{self.role_info.action_start}{action}{self.role_info.action_end}{msg}"
+        msg = f"*{action}*{msg}"
     else:
       if action:
-        msg += f"{self.role_info.action_start}{action}{self.role_info.action_end}"
+        msg += f"*{action}*"
     if replace_message:
       try:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
@@ -126,15 +120,12 @@ class Chat:
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
         top_p, tau, temperature, presence_penalty, frequency_penalty, cfg,
-        min_len, self.role_info.action_start_token, self.role_info.action_end_token,
-        force_action
+        min_len, force_action
       )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, out_cfg, token_cfg, state_cfg)
+      occurrence = self.__get_occurrence()
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)
       self.retry_count = 0
       return '', '', reply_text
-    
-  def __get_system_prompt(self):
-    return f"根据以下描述来扮演{self.role_info.bot_chat}，{self.role_info.bot_chat}的设定是：{self.role_info.bot_personality}\n请阅读下面的话，并使用符合{self.role_info.bot_chat}性格，生动且合理的语言来回复，注意不要过度回复。\n"
 
   def __empty_msg(self):
     return f"继续扮演{self.role_info.bot_chat}来发言，使用生动合理的描述或回复以推进剧情的发展，注意不要过度回复。"
@@ -148,8 +139,8 @@ class Chat:
       out_cfg, token_cfg, state_cfg = self.model_utils.run_rnn(token_cfg, state_cfg, self.model_utils.pipeline.encode(new))
     return out_cfg, token_cfg, state_cfg
   
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, out_cfg, token_cfg, state_cfg):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, out_cfg, token_cfg, state_cfg)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, out_cfg, token_cfg, state_cfg)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -272,7 +263,8 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       if row[1]:
-        msg = row[1].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
+        msg = row[1].replace('\n', '')
+        msg = markdown2.markdown(msg)
         output += f"""
           <div class="message message_c">
             <div class="circle-bot">
@@ -289,7 +281,8 @@ class Chat:
           </div>
         """
       if row[0]:
-        msg = row[0].replace('\n', '').replace(self.role_info.action_start, '<p>').replace(self.role_info.action_end, '</p>')
+        msg = row[0].replace('\n', '')
+        msg = markdown2.markdown(msg)
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -374,9 +367,7 @@ class Chat:
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     
   def __find_all_chat(self, input_str):
-    if not self.role_info.action_start or not self.role_info.action_end:
-      return (0, len(input_str))
-    pattern = re.compile("\\" + self.role_info.action_start + ".*?\\" + self.role_info.action_end)
+    pattern = re.compile("\*.*?\*")
     while True:
       match = re.search(pattern, input_str)
       if not match:
@@ -407,3 +398,24 @@ class Chat:
         if i[1] == 'action':
           action = i[0]
     return chat, action
+  
+  def __get_occurrence(self, is_pre=False):
+    chatbot = copy.deepcopy(self.role_info.chatbot)
+    if len(chatbot) > 3:
+      chatbot = chatbot[-3:]
+    if is_pre:
+      chatbot = chatbot[:-1]
+    occurrence = {}
+    for c in chatbot:
+      if c[1]:
+        i = c[1].replace(self.role_info.user_chat, '').replace(self.role_info.bot_chat, '')
+        bot_token = self.model_utils.pipeline.encode(i)
+        bot_token.reverse()
+        for t in bot_token:
+          if t in self.model_utils.AVOID_REPEAT_TOKENS:
+            continue
+          for o in occurrence:
+            if occurrence[o] > 0.5:
+              occurrence[o] *= 0.999
+          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
+    return occurrence

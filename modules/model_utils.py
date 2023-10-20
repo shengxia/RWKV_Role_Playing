@@ -67,17 +67,15 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, out_cfg = None, token_cfg=None, state_cfg=None):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, out_cfg = None, token_cfg=None, state_cfg=None):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    occurrence = {}
     out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
     if chat_param['force_action']:
-      if chat_param['action_start_token']:
-        out[chat_param['action_start_token']] = 10
-        if chat_param['cfg'] > 0:
-          out_cfg[chat_param['action_start_token']] = 10
+      out[277] = 10
+      if chat_param['cfg'] > 0:
+        out_cfg[277] = 10
     for i in range(500):
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
@@ -96,7 +94,8 @@ class ModelUtils:
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
-        occurrence[o] *= self.penalty_decay
+        if occurrence[o] > 0.5:
+          occurrence[o] *= self.penalty_decay
       if token not in self.AVOID_REPEAT_TOKENS:
         occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
@@ -112,7 +111,7 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, action_start_token=None, action_end_token=None, force_action=False):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, force_action=False):
     chat_param = {
       'top_p': top_p,
       'tau': tau,
@@ -121,8 +120,6 @@ class ModelUtils:
       'frequency_penalty': frequency_penalty,
       'cfg': cfg,
       'min_len': min_len,
-      'action_start_token': action_start_token,
-      'action_end_token': action_end_token,
       'force_action': force_action
     }
     return chat_param

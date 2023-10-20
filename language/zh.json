@@ -34,8 +34,6 @@
   "BOT_LB": "角色的名字",
   "GREETING_PH": "开场白",
   "GREETING_LB": "开场白",
-  "AC_START_LB": "旁白开始符号",
-  "AC_END_LB": "旁白结束符号",
   "PERSONA_PH": "角色设定",
   "PERSONA_LB": "角色的设定",
   "EXAMPLE_DIA": "示例对话",
