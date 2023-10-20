@@ -4,3 +4,4 @@ gradio
 ninja
 rwkv>=0.7.4
 numpy 
+markdown2

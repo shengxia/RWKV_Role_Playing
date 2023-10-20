@@ -14,9 +14,9 @@ class UI:
   lock_flag_role = True
   language_conf = None
 
-  def __init__(self, model_utils:ModelUtils, lang):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length):
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils, lang)
+    self.chat_model = Chat(model_utils, lang, chat_length)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
       self.language_conf = json.loads(f.read())
 
@@ -42,12 +42,12 @@ class UI:
   # 更新角色列表
   def __update_chars_list(self):
     char_list = self.__get_json_files(self.char_path)
-    return gr.Dropdown.update(choices=char_list)
+    return gr.Dropdown(choices=char_list)
   
   # 更新对话记录列表
   def __update_save_list(self, bot_name):
     save_list = self.__get_save_list(bot_name)
-    return gr.Dropdown.update(choices=save_list)
+    return gr.Dropdown(choices=save_list)
 
   def __get_save_list(self, bot_name):
       save_list = [ f'{bot_name}/' + i for i in self.__get_save_files(f'{self.save_path}/{bot_name}')]
@@ -74,15 +74,13 @@ class UI:
       self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action)
   
   # 保存角色
-  def __save_char(self, file_name='', user='', bot='', action_start='', action_end='', greeting='', bot_persona='', example_message='', use_qa=False):
+  def __save_char(self, file_name='', user='', bot='', greeting='', bot_persona='', example_message='', use_qa=False):
     if file_name == '' and bot != '':
       file_name = bot
     with open(f"{self.char_path}/{file_name}.json", 'w', encoding='utf8') as f:
       char = {
         'user': user, 
         'bot': bot, 
-        'action_start': action_start,
-        'action_end': action_end,
         'greeting': greeting, 
         'bot_persona': bot_persona, 
         'example_message': example_message,
@@ -95,11 +93,21 @@ class UI:
       save_file = f'save/{file_name}.sav'
       if os.path.exists(save_file):
         os.remove(save_file)
-    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
-                                               char['action_end'], char['greeting'], char['bot_persona'], 
+    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
     char_list = self.__get_json_files(self.char_path)
-    return gr.Dropdown.update(choices=char_list), chatbot
+    return_arr = (
+      gr.Dropdown(choices=char_list),
+      chatbot,
+      gr.Textbox(interactive=True), 
+      gr.Textbox(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True)
+    )
+    return return_arr
 
   # 载入角色
   def __load_char(self, file_name):
@@ -107,34 +115,31 @@ class UI:
       raise gr.Error(self.language_conf['LOAD_CHAR_ERROR'])
     with open(f"{self.char_path}/{file_name}.json", 'r', encoding='utf-8') as f:
       char = json.loads(f.read())
-    for key in ['user', 'bot', 'action_start', 'action_end', 'greeting', 'bot_persona', 'example_message', 'use_qa']:
+    for key in ['user', 'bot', 'greeting', 'bot_persona', 'example_message', 'use_qa']:
       if key not in char.keys():
         if key == 'use_qa':
           char[key] = False
         else:
           char[key] = ''
-    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['action_start'], 
-                                               char['action_end'], char['greeting'], char['bot_persona'], 
+    chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
     return_arr = (
       file_name,
       char['user'], 
       char['bot'], 
-      char['action_start'], 
-      char['action_end'], 
       char['greeting'], 
       char['bot_persona'],
       char['example_message'],
       char['use_qa'],
       chatbot,
       self.__update_save_list(file_name),
-      gr.Textbox.update(interactive=True), 
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True)
+      gr.Textbox(interactive=True), 
+      gr.Textbox(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True)
     )
     return return_arr
 
@@ -146,25 +151,25 @@ class UI:
       file_name = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     save_path=f'{bot}/{file_name}'
     self.chat_model.save_chat_to(save_path)
-    return (gr.Dropdown.update(choices=self.__get_save_list(bot),value=save_path),)
+    return (gr.Dropdown(choices=self.__get_save_list(bot),value=save_path),)
 
   def __save_update(self, bot, file_name):
     self.chat_model.save_chat_to(file_name)
-    return (gr.Dropdown.update(choices=self.__get_save_list(bot),value=file_name),)
+    return (gr.Dropdown(choices=self.__get_save_list(bot),value=file_name),)
 
   def __confirm_delete(self):
     return_arr = (
-      gr.Button.update(visible=False),
-      gr.Button.update(visible=True),
-      gr.Button.update(visible=True)
+      gr.Button(visible=False),
+      gr.Button(visible=True),
+      gr.Button(visible=True)
     )
     return return_arr
   
   def __confirm_cancel(self):
     return_arr = (
-      gr.Button.update(visible=True),
-      gr.Button.update(visible=False),
-      gr.Button.update(visible=False)
+      gr.Button(visible=True),
+      gr.Button(visible=False),
+      gr.Button(visible=False)
     )
     return return_arr
 
@@ -179,14 +184,14 @@ class UI:
       text,
       action_text,
       chatbot,
-      gr.Textbox.update(show_label=show_label),
-      gr.Textbox.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive), 
-      gr.Button.update(interactive=interactive),
-      gr.Checkbox.update(value=False)
+      gr.Textbox(show_label=show_label),
+      gr.Textbox(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive), 
+      gr.Button(interactive=interactive),
+      gr.Checkbox(value=False)
     )
     return result
   
@@ -194,13 +199,13 @@ class UI:
     if self.chat_model.check_token_count():
       self.chat_model.arrange_token()
     result = (
-      gr.Textbox.update(show_label=False),
-      gr.Textbox.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True), 
-      gr.Button.update(interactive=True)
+      gr.Textbox(show_label=False),
+      gr.Textbox(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True), 
+      gr.Button(interactive=True)
     )
     return result
 
@@ -210,9 +215,9 @@ class UI:
       message,
       action,
       chatbot,
-      gr.Button.update(visible=True),
-      gr.Button.update(visible=False),
-      gr.Button.update(visible=False)
+      gr.Button(visible=True),
+      gr.Button(visible=False),
+      gr.Button(visible=False)
     )
     return return_arr
     
@@ -236,7 +241,7 @@ class UI:
       configs_role['frequency'], 
       configs_role['cfg'], 
       configs_role['force_action'], 
-      gr.Dropdown.update(choices=char_list)
+      gr.Dropdown(choices=char_list)
     )
     return return_arr
 
@@ -295,14 +300,14 @@ class UI:
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
+              force_action = gr.Checkbox(label='强制输出动作')
               min_len = gr.Slider(minimum=0, maximum=500, step=1, label=self.language_conf['MIN_LEN'])
               top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
               tau = gr.Slider(minimum=0, maximum=1, step=0.01, label='TAU')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
-              presence_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.01, label='Presence Penalty')
-              frequency_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.01, label='Frequency Penalty')
+              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
+              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
               cfg = gr.Slider(minimum=0, maximum=2.0, step=0.1, label='cfg factor')
-              force_action = gr.Checkbox(label='强制输出动作')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
@@ -314,11 +319,6 @@ class UI:
             user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
             bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
             use_qa = gr.Checkbox(label=self.language_conf['QA_REPLACE'])
-            with gr.Row():
-              with gr.Column(min_width=100):
-                action_start = gr.Textbox(placeholder=self.language_conf['AC_START_LB'], label=self.language_conf['AC_START_LB'])
-              with gr.Column(min_width=100):
-                action_end = gr.Textbox(placeholder=self.language_conf['AC_END_LB'], label=self.language_conf['AC_END_LB'])
           with gr.Column():
             greeting = gr.TextArea(placeholder=self.language_conf['GREETING_PH'], label=self.language_conf['GREETING_LB'], lines=2)
             bot_persona = gr.TextArea(placeholder=self.language_conf['PERSONA_PH'], label=self.language_conf['PERSONA_LB'], lines=7)
@@ -328,7 +328,7 @@ class UI:
       
       input_list = [message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action]
       output_list = [message, action, chatbot]
-      char_input_list = [file_name, user, bot, action_start, action_end, greeting, bot_persona, example_message, use_qa, chatbot]
+      char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)
@@ -342,7 +342,7 @@ class UI:
       action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
-      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot])
+      save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot] + interactive_list)
       clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
       get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-3], outputs=[message, action])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
