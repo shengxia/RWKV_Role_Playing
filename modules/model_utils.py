@@ -67,26 +67,18 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, out_cfg = None, token_cfg=None, state_cfg=None):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
     out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
     if chat_param['force_action']:
       out[277] = 10
-      if chat_param['cfg'] > 0:
-        out_cfg[277] = 10
     for i in range(500):
       if chat_param['min_len'] >0 and i < chat_param['min_len']:
         out[self.CHN_PERIOD_END] = self.NEG_INF
         out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
         out[self.END_OF_LINE] = self.NEG_INF
-        if chat_param['cfg'] > 0:
-          out_cfg[self.CHN_PERIOD_END] = self.NEG_INF
-          out_cfg[self.DOUBLE_END_OF_LINE] = self.NEG_INF
-          out_cfg[self.END_OF_LINE] = self.NEG_INF
-      if chat_param['cfg'] > 0:
-        out = out_cfg * chat_param['cfg'] + out * (1 - chat_param['cfg'])
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       if not chat_param['tau']:
@@ -99,8 +91,6 @@ class ModelUtils:
       if token not in self.AVOID_REPEAT_TOKENS:
         occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
-      if chat_param['cfg'] > 0:
-        out_cfg, token_cfg, state_cfg = self.run_rnn(token_cfg, state_cfg, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
@@ -111,14 +101,13 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len=0, force_action=False):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len=0, force_action=False):
     chat_param = {
       'top_p': top_p,
       'tau': tau,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
-      'cfg': cfg,
       'min_len': min_len,
       'force_action': force_action
     }

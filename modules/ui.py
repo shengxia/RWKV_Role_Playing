@@ -55,7 +55,7 @@ class UI:
         save_list.append(f'{bot_name}')
       return save_list
   
-  def __save_config(self, f, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action):
+  def __save_config(self, f, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, force_action):
     config = {
       'min_len': min_len,
       'top_p': top_p, 
@@ -63,15 +63,14 @@ class UI:
       'temperature': temperature, 
       'presence': presence_penalty, 
       'frequency': frequency_penalty,
-      'cfg': cfg,
       'force_action': force_action
     }
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.65, tau=0, temperature=2, presence_penalty=0.2, frequency_penalty=0.2, cfg=0, min_len=0, force_action=False):
+  def __save_config_role(self, top_p=0.65, tau=0, temperature=2, presence_penalty=0.2, frequency_penalty=0.2, min_len=0, force_action=False):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action)
+      self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, force_action)
   
   # 保存角色
   def __save_char(self, file_name='', user='', bot='', greeting='', bot_persona='', example_message='', use_qa=False):
@@ -99,6 +98,7 @@ class UI:
     return_arr = (
       gr.Dropdown(choices=char_list),
       chatbot,
+      gr.Textbox(interactive=True), 
       gr.Textbox(interactive=True), 
       gr.Textbox(interactive=True), 
       gr.Button(interactive=True), 
@@ -133,6 +133,7 @@ class UI:
       char['use_qa'],
       chatbot,
       self.__update_save_list(file_name),
+      gr.Textbox(interactive=True), 
       gr.Textbox(interactive=True), 
       gr.Textbox(interactive=True), 
       gr.Button(interactive=True), 
@@ -173,8 +174,8 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action, action_front, replace_message):
-    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, action_front, min_len, replace_message, force_action)
+  def __send_message(self, message, action, instruct, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, force_action, action_front, replace_message):
+    text, action_text, instruct_text, chatbot = self.chat_model.on_message(message, action, instruct, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message, force_action)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -183,8 +184,10 @@ class UI:
     result = (
       text,
       action_text,
+      instruct_text,
       chatbot,
       gr.Textbox(show_label=show_label),
+      gr.Textbox(interactive=interactive), 
       gr.Textbox(interactive=interactive), 
       gr.Button(interactive=interactive), 
       gr.Button(interactive=interactive), 
@@ -201,6 +204,7 @@ class UI:
     result = (
       gr.Textbox(show_label=False),
       gr.Textbox(interactive=True), 
+      gr.Textbox(interactive=True), 
       gr.Button(interactive=True), 
       gr.Button(interactive=True), 
       gr.Button(interactive=True), 
@@ -210,10 +214,11 @@ class UI:
     return result
 
   def __reset_chatbot(self):
-    message, action, chatbot = self.chat_model.reset_bot()
+    message, action, instruct, chatbot = self.chat_model.reset_bot()
     return_arr = (
       message,
       action,
+      instruct,
       chatbot,
       gr.Button(visible=True),
       gr.Button(visible=False),
@@ -228,8 +233,6 @@ class UI:
     char_list = self.__get_json_files(self.char_path)
     if 'tau' not in configs_role:
       configs_role['tau'] = 0    
-    if 'cfg' not in configs_role:
-      configs_role['cfg'] = 0
     if 'min_len' not in configs_role:
       configs_role['min_len'] = 0
     return_arr = (
@@ -239,7 +242,6 @@ class UI:
       configs_role['temperature'], 
       configs_role['presence'], 
       configs_role['frequency'], 
-      configs_role['cfg'], 
       configs_role['force_action'], 
       gr.Dropdown(choices=char_list)
     )
@@ -257,6 +259,7 @@ class UI:
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
             message = gr.Textbox(placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
             action = gr.Textbox(placeholder=self.language_conf['NARR_PH'], show_label=False, interactive=False)
+            instruct = gr.Textbox(placeholder="指令", show_label=False, interactive=False)
             with gr.Row():
               action_front = gr.Checkbox(label=self.language_conf['AF_CK'], value=True)
               replace_message = gr.Checkbox(label=self.language_conf['TAMPER'])
@@ -307,7 +310,6 @@ class UI:
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
               frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
-              cfg = gr.Slider(minimum=0, maximum=2.0, step=0.1, label='cfg factor')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
@@ -326,10 +328,10 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action]
-      output_list = [message, action, chatbot]
+      input_list = [message, action, instruct, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, force_action]
+      output_list = [message, action, instruct, chatbot]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
-      interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
+      interactive_list = [message, action, instruct, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
@@ -337,14 +339,15 @@ class UI:
       load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
       save_btn.click(self.__save_save, inputs=[char_dropdown,save_file_name], outputs=[save_dropdown])
       save_update_btn.click(self.__save_update, inputs=[char_dropdown,save_dropdown], outputs=[save_dropdown])
-      save_conf.click(self.__save_config_role, inputs=input_list[2:])
+      save_conf.click(self.__save_config_role, inputs=input_list[3:])
       message.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       action.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
+      instruct.submit(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [action_front, replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
-      regen.click(self.chat_model.regen_msg, inputs=input_list[2:], outputs=output_list)
+      regen.click(self.chat_model.regen_msg, inputs=input_list[3:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot] + interactive_list)
-      clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:-3], outputs=[message, action])
+      clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, action, instruct])
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[3:-2], outputs=[message, action])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
@@ -362,7 +365,6 @@ class UI:
         temperature, 
         presence_penalty, 
         frequency_penalty, 
-        cfg,
         force_action,
         char_dropdown
       ]
