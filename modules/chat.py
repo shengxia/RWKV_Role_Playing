@@ -80,7 +80,7 @@ class Chat:
     if user_msg:
       all_msg += f"{self.role_info.user}: {user_msg}\n\n"
     if system_msg:
-      all_msg += f"System: {system_msg}\n\n"
+      all_msg += f"{system_msg}\n\n"
     new = f'{all_msg}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
@@ -97,7 +97,7 @@ class Chat:
       self.__flush_chat()
     message = message.strip().replace('\r\n','\n') if message else ''
     action = action.strip().replace('\r\n','\n') if action else ''
-    msg = f"“{message}”" if message else ""
+    msg = f"{message}" if message else ""
     if action_front:
       if action:
         msg = f"*{action}*{msg}"
@@ -126,7 +126,7 @@ class Chat:
       if msg:
         all_msg += f"{self.role_info.user}: {msg}\n\n"
       if system_msg:
-        all_msg += f"System: {system_msg}\n\n"
+        all_msg += f"{system_msg}\n\n"
       new = f"{all_msg}{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None, system_msg]]
@@ -173,7 +173,6 @@ class Chat:
     chat_action_data = self.__format_chat_action(pos_arr, messages[0])
     chat, action = self.__get_chat_action(chat_action_data)
     instruct = messages[2]
-    chat = chat.replace("“", "").replace("”", "")
     return self.__generate_cai_chat_html(), chat, action, instruct
   
   def __flush_chat(self):
@@ -317,11 +316,11 @@ class Chat:
       ).replace("<bot>", self.role_info.bot_chat
       ).replace("<user>", self.role_info.user_chat)
     init_prompt = {
-      'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话：",
+      'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
-      'zh': f"System: 根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n",
+      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然。\n",
       'en': f"The following is another coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}.\n"
     }
     init_prompt_final = init_prompt[self.lang]
@@ -420,7 +419,7 @@ class Chat:
           if t in self.model_utils.AVOID_REPEAT_TOKENS:
             continue
           for o in occurrence:
-            if occurrence[o] > 0.5:
-              occurrence[o] *= 0.999
+            if occurrence[o] > 0.75:
+              occurrence[o] *= 0.996
           occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence

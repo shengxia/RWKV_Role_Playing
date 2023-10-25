@@ -21,7 +21,7 @@ class ModelUtils:
   DOUBLE_END_OF_LINE = 261
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：'
+  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：*'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   penalty_decay = 0.996
@@ -86,7 +86,7 @@ class ModelUtils:
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
-        if occurrence[o] > 0.5:
+        if occurrence[o] > 0.75:
           occurrence[o] *= self.penalty_decay
       if token not in self.AVOID_REPEAT_TOKENS:
         occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
