@@ -12,11 +12,13 @@ class Chat:
   role_info = None
   chunked_index = None
   chat_length = 4000
+  autosave = False
   retry_count = 0
 
-  def __init__(self, model_utils:ModelUtils, lang, chat_length):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
     self.lang = lang
+    self.autosave = autosave
     self.chat_length = chat_length
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
@@ -32,7 +34,7 @@ class Chat:
     else:
       out, model_tokens, model_state = self.__get_init_state()
       if greeting:
-        self.role_info.chatbot = [[None, greeting]]
+        self.role_info.chatbot = [[None, greeting, None]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     return self.__generate_cai_chat_html()
 
@@ -53,7 +55,7 @@ class Chat:
     except:
       pass
     if self.role_info.greeting:
-      self.role_info.chatbot = [[None, self.role_info.greeting]]
+      self.role_info.chatbot = [[None, self.role_info.greeting, None]]
     else:
       self.role_info.chatbot = []
     save_file = f'save/{self.role_info.file_name}.sav'
@@ -61,37 +63,43 @@ class Chat:
       os.remove(save_file)
     self.chunked_index = None
     self.retry_count = 0
-    return None, None, self.__generate_cai_chat_html()
+    return None, None, None, self.__generate_cai_chat_html()
   
-  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, min_len, force_action):
+  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, force_action):
     if self.chunked_index:
       self.__flush_chat()
     try:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
     except:
-      return '', '', self.__generate_cai_chat_html()
-    if not self.role_info.chatbot[-1][0]:
-      new = self.__empty_msg() + '\n\n'
-    else:
-      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n"
-    new = f'{new}{self.role_info.bot}:'
+      return '', '', '', self.__generate_cai_chat_html()
+    all_msg = ""
+    user_msg = ""
+    system_msg = ""
+    if self.role_info.chatbot[-1][2]:
+      system_msg = self.role_info.chatbot[-1][2]
+    if self.role_info.chatbot[-1][0]:
+      user_msg = self.role_info.chatbot[-1][0]
+    if user_msg:
+      all_msg += f"{self.role_info.user}: {user_msg}\n\n"
+    if system_msg:
+      all_msg += f"{system_msg}\n\n"
+    new = f'{all_msg}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
     chat_param = self.model_utils.format_chat_param(
-      top_p, tau, temperature, presence_penalty, frequency_penalty, cfg,
+      top_p, tau, temperature, presence_penalty, frequency_penalty,
       min_len, force_action
     )
     occurrence = self.__get_occurrence(True)
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg) 
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence) 
     self.retry_count += 1
-    return '', '', reply_text
+    return '', '', '', reply_text
   
-  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, cfg, action_front, min_len, replace_message, force_action):
+  def on_message(self, message, action, instruct, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message, force_action):
     if self.chunked_index:
       self.__flush_chat()
     message = message.strip().replace('\r\n','\n') if message else ''
     action = action.strip().replace('\r\n','\n') if action else ''
-    msg = f"{message}"
+    msg = f"{message}" if message else ""
     if action_front:
       if action:
         msg = f"*{action}*{msg}"
@@ -102,45 +110,42 @@ class Chat:
       try:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
       except:
-        return '', '', self.__generate_cai_chat_html()
+        return '', '', '', self.__generate_cai_chat_html()
       new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}: {msg}\n\n"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot[-1][1] = msg
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
-      return '', '', self.__generate_cai_chat_html()
+      return '', '', '', self.__generate_cai_chat_html()
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: "
-      if not msg:
-        new = self.__empty_msg() + new
-      new += f"{msg}\n\n{self.role_info.bot}:"
+      all_msg = ""
+      system_msg = ""
+      if not msg and not instruct:
+        system_msg = self.__empty_msg()
+      if instruct:
+        system_msg = f"{instruct}"
+      if msg:
+        all_msg += f"{self.role_info.user}: {msg}\n\n"
+      if system_msg:
+        all_msg += f"Instruction: {system_msg}\n\n"
+      new = f"{all_msg}{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-      out_cfg, token_cfg, state_cfg = self.__get_cfg_state(new, cfg)
-      self.role_info.chatbot += [[msg, None]]
+      self.role_info.chatbot += [[msg, None, system_msg]]
       chat_param = self.model_utils.format_chat_param(
-        top_p, tau, temperature, presence_penalty, frequency_penalty, cfg,
+        top_p, tau, temperature, presence_penalty, frequency_penalty,
         min_len, force_action
       )
       occurrence = self.__get_occurrence()
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence)
       self.retry_count = 0
-      return '', '', reply_text
+      return '', '', '', reply_text
 
   def __empty_msg(self):
-    return f"继续扮演{self.role_info.bot_chat}来发言，使用生动合理的描述或回复以推进剧情的发展，注意不要过度回复。"
-  
-  def __get_cfg_state(self, new, cfg):
-    out_cfg = None
-    token_cfg = None
-    state_cfg = None
-    if cfg > 0:
-      out_cfg, token_cfg, state_cfg = self.__get_init_state()
-      out_cfg, token_cfg, state_cfg = self.model_utils.run_rnn(token_cfg, state_cfg, self.model_utils.pipeline.encode(new))
-    return out_cfg, token_cfg, state_cfg
-  
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, out_cfg, token_cfg, state_cfg):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, out_cfg, token_cfg, state_cfg)
+    return f"继续扮演{self.role_info.bot_chat}来发言。"
+    
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -163,13 +168,14 @@ class Chat:
   def clear_last(self):
     index = len(self.role_info.chatbot) - 1
     if index <= 0:
-      return self.__generate_cai_chat_html(), '', ''
+      return self.__generate_cai_chat_html(), '', '', ''
     self.chunked_index = index
     messages = self.role_info.chatbot.pop()
     pos_arr = list(self.__find_all_chat(messages[0]))
     chat_action_data = self.__format_chat_action(pos_arr, messages[0])
     chat, action = self.__get_chat_action(chat_action_data)
-    return self.__generate_cai_chat_html(), chat, action
+    instruct = messages[2]
+    return self.__generate_cai_chat_html(), chat, action, instruct
   
   def __flush_chat(self):
     chatbot = copy.deepcopy(self.role_info.chatbot)
@@ -194,7 +200,7 @@ class Chat:
 
   def __save_log(self):
     os.makedirs(f'log/{self.role_info.file_name}/', exist_ok=True)
-    dict_list = [{'input': q, 'output': a} for q, a in self.role_info.chatbot]
+    dict_list = [{'input': q, 'output': a, 'system': s} for q, a, s in self.role_info.chatbot]
     with open(f'./log/{self.role_info.file_name}/{self.role_info.log_hash}.json', 'w', encoding='utf-8') as f:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
@@ -249,7 +255,8 @@ class Chat:
       pickle.dump(data, f)
 
   def __save_chat(self):
-    return self.save_chat_to(self.role_info.file_name)
+    if self.autosave:
+      return self.save_chat_to(self.role_info.file_name)
 
   def __load_chat_from(self, file_name:str):
     with open(f'save/{file_name}.sav', 'rb') as f:
@@ -263,7 +270,7 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       if row[1]:
-        msg = row[1].replace('\n', '')
+        msg = row[1].replace('\n', '').replace('**', '')
         msg = markdown2.markdown(msg)
         output += f"""
           <div class="message message_c">
@@ -281,7 +288,7 @@ class Chat:
           </div>
         """
       if row[0]:
-        msg = row[0].replace('\n', '')
+        msg = row[0].replace('\n', '').replace('**', '')
         msg = markdown2.markdown(msg)
         output += f"""
           <div class="message message_m">
@@ -312,7 +319,7 @@ class Chat:
       ).replace("<bot>", self.role_info.bot_chat
       ).replace("<user>", self.role_info.user_chat)
     init_prompt = {
-      'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话：",
+      'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
@@ -415,7 +422,7 @@ class Chat:
           if t in self.model_utils.AVOID_REPEAT_TOKENS:
             continue
           for o in occurrence:
-            if occurrence[o] > 0.5:
-              occurrence[o] *= 0.999
+            if occurrence[o] > self.model_utils.penalty_gate:
+              occurrence[o] *= self.model_utils.penalty_decay
           occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence
