@@ -1,10 +1,9 @@
 {
   "min_len": 0,
-  "top_p": 0.5,
+  "top_p": 0.6,
   "tau": 0,
   "temperature": 1.5,
   "presence": 0.2,
   "frequency": 0.2,
-  "cfg": 0,
   "force_action": false
 }

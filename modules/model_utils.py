@@ -25,7 +25,8 @@ class ModelUtils:
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   penalty_decay = 0.996
-  
+  penalty_gate = 0.75
+
   def __init__(self, args):
     self.model_path = args.model
     self.strategy = args.strategy
@@ -86,7 +87,7 @@ class ModelUtils:
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
       for o in occurrence:
-        if occurrence[o] > 0.75:
+        if occurrence[o] > self.penalty_gate:
           occurrence[o] *= self.penalty_decay
       if token not in self.AVOID_REPEAT_TOKENS:
         occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)

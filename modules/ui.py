@@ -14,9 +14,9 @@ class UI:
   lock_flag_role = True
   language_conf = None
 
-  def __init__(self, model_utils:ModelUtils, lang, chat_length):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils, lang, chat_length)
+    self.chat_model = Chat(model_utils, lang, chat_length, autosave)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
       self.language_conf = json.loads(f.read())
 

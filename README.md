@@ -16,7 +16,7 @@ https://github.com/shengxia/RWKV_Role_Playing_API
 
 另外，如果不知道人物性格怎么设定的话，我建议你可以下载一个Glow，这是[官网地址](https://glowapp.vip/)，然后到上面去找智能体，直接把它们的性格粘过来用是完全没问题的。
 
-还玩个屁的Glow，RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4096这个模型效果好的出奇，3B的参数量就能扮演一个不错的赛博小女友，玩了几天我都要喝营养快线了，现在7B的也出来了（RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4096），效果确实强，话说啥时候有14B啊，给我一波升级显卡的动力。
+就目前测试来看，RWKV5效果挺不错的，1.5B的模型玩起来感觉有RWKV4 3B的水平，距离RWKV5 3B的放出还有一段时间，到时候再体验体验，另外，目前RWKV5进行int8量化后无法使用，也没办法用两张卡推理，所以想体验RWKV5 7B的话，可能还得有张16G显存及以上的显卡。
 
 目前我不再支持Raven系列的模型，而是改用World系列的模型了，这个模型在角色扮演上好太多了，我强烈推荐CHNtuned的模型，另外我在FAQ中也推荐了一些其他的模型，他们同样也非常适合角色扮演，如果你使用的是老版本的话，可能还需要更新一下RWKV库
 
@@ -74,6 +74,7 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4
 | --jit_on | 控制RWKV_JIT_ON这个环境变量的，0-禁用，1-启用 |
 | --share | 生成gradio链接 |
 | --lang | 语言，zh-中文，en-英文 |
+| --autosave | 是否自动保存，目前默认是不自动保存了，因为RWKV5的state变大了好多，如果需要的话记得把这个参数加上 |
 
 模型的加载方式（--strategy）我默认使用的是"cuda fp16i8"，如果想使用其他的加载方式可以自行调整该参数，具体有哪些值可以参考[这个文章](https://zhuanlan.zhihu.com/p/609154637)或者这张图![图片](./pic/4.jpg)
 

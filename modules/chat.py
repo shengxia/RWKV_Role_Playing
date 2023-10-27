@@ -12,11 +12,13 @@ class Chat:
   role_info = None
   chunked_index = None
   chat_length = 4000
+  autosave = False
   retry_count = 0
 
-  def __init__(self, model_utils:ModelUtils, lang, chat_length):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
     self.lang = lang
+    self.autosave = autosave
     self.chat_length = chat_length
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
@@ -126,7 +128,7 @@ class Chat:
       if msg:
         all_msg += f"{self.role_info.user}: {msg}\n\n"
       if system_msg:
-        all_msg += f"{system_msg}\n\n"
+        all_msg += f"Instruction: {system_msg}\n\n"
       new = f"{all_msg}{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None, system_msg]]
@@ -253,7 +255,8 @@ class Chat:
       pickle.dump(data, f)
 
   def __save_chat(self):
-    return self.save_chat_to(self.role_info.file_name)
+    if self.autosave:
+      return self.save_chat_to(self.role_info.file_name)
 
   def __load_chat_from(self, file_name:str):
     with open(f'save/{file_name}.sav', 'rb') as f:
@@ -419,7 +422,7 @@ class Chat:
           if t in self.model_utils.AVOID_REPEAT_TOKENS:
             continue
           for o in occurrence:
-            if occurrence[o] > 0.75:
-              occurrence[o] *= 0.996
+            if occurrence[o] > self.model_utils.penalty_gate:
+              occurrence[o] *= self.model_utils.penalty_decay
           occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
     return occurrence
