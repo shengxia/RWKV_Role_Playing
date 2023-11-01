@@ -65,7 +65,7 @@ class Chat:
     self.retry_count = 0
     return None, None, None, self.__generate_cai_chat_html()
   
-  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len, force_action):
+  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, max_len, force_action):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -82,19 +82,18 @@ class Chat:
     if user_msg:
       all_msg += f"{self.role_info.user}: {user_msg}\n\n"
     if system_msg:
-      all_msg += f"{system_msg}\n\n"
+      all_msg += f"Instruction: {system_msg}\n\n"
     new = f'{all_msg}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
       top_p, tau, temperature, presence_penalty, frequency_penalty,
-      min_len, force_action
+      max_len, force_action
     )
-    occurrence = self.__get_occurrence(True)
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence) 
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state) 
     self.retry_count += 1
     return '', '', '', reply_text
   
-  def on_message(self, message, action, instruct, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, min_len, replace_message, force_action):
+  def on_message(self, message, action, instruct, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, max_len, replace_message, force_action):
     if self.chunked_index:
       self.__flush_chat()
     message = message.strip().replace('\r\n','\n') if message else ''
@@ -128,24 +127,23 @@ class Chat:
       if msg:
         all_msg += f"{self.role_info.user}: {msg}\n\n"
       if system_msg:
-        all_msg += f"Instruction: {system_msg}\n\n"
+        all_msg += f"System: *{system_msg}*\n\n"
       new = f"{all_msg}{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None, system_msg]]
       chat_param = self.model_utils.format_chat_param(
         top_p, tau, temperature, presence_penalty, frequency_penalty,
-        min_len, force_action
+        max_len, force_action
       )
-      occurrence = self.__get_occurrence()
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state)
       self.retry_count = 0
       return '', '', '', reply_text
 
   def __empty_msg(self):
     return f"继续扮演{self.role_info.bot_chat}来发言。"
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -314,10 +312,8 @@ class Chat:
   
   def __get_init_prompt(self):
     em = self.role_info.example_message.replace(
-      "<bot>:", f"{self.role_info.bot}:"
-      ).replace("<user>:", f"{self.role_info.user}:"
-      ).replace("<bot>", self.role_info.bot_chat
-      ).replace("<user>", self.role_info.user_chat)
+      "<bot>", self.role_info.bot_chat).replace(
+      "<user>", self.role_info.user_chat)
     init_prompt = {
       'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
@@ -405,24 +401,3 @@ class Chat:
         if i[1] == 'action':
           action = i[0]
     return chat, action
-  
-  def __get_occurrence(self, is_pre=False):
-    chatbot = copy.deepcopy(self.role_info.chatbot)
-    if len(chatbot) > 3:
-      chatbot = chatbot[-3:]
-    if is_pre:
-      chatbot = chatbot[:-1]
-    occurrence = {}
-    for c in chatbot:
-      if c[1]:
-        i = c[1].replace(self.role_info.user_chat, '').replace(self.role_info.bot_chat, '')
-        bot_token = self.model_utils.pipeline.encode(i)
-        bot_token.reverse()
-        for t in bot_token:
-          if t in self.model_utils.AVOID_REPEAT_TOKENS:
-            continue
-          for o in occurrence:
-            if occurrence[o] > self.model_utils.penalty_gate:
-              occurrence[o] *= self.model_utils.penalty_decay
-          occurrence[t] = 1 + (occurrence[t] if t in occurrence else 0)
-    return occurrence

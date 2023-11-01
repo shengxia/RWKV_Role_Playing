@@ -1,5 +1,5 @@
 {
-  "min_len": 0,
+  "max_len": 0,
   "top_p": 0.6,
   "tau": 0,
   "temperature": 1.5,

@@ -44,7 +44,7 @@
   "OUTPUT": "输出",
   "TOKEN_LAST": "上一次token",
   "GET_TOKEN": "查看token",
-  "MIN_LEN": "最小回复长度（0为不控制）",
+  "MAX_LEN": "最大回复长度（0为不控制）",
   "QA_REPLACE": "用User和Assistant代替你和角色的名字",
   "TAB_DEFAULT": "常规",
   "TAB_SAVE": "存档",

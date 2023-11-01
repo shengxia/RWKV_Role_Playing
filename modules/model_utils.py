@@ -26,6 +26,7 @@ class ModelUtils:
   all_state = {}
   penalty_decay = 0.996
   penalty_gate = 0.75
+  chat_token_count = 0
 
   def __init__(self, args):
     self.model_path = args.model
@@ -68,48 +69,56 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
+  def get_reply(self, model_tokens, model_state, out, chat_param):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
     if chat_param['force_action']:
       out[277] = 10
-    for i in range(500):
-      if chat_param['min_len'] >0 and i < chat_param['min_len']:
-        out[self.CHN_PERIOD_END] = self.NEG_INF
-        out[self.DOUBLE_END_OF_LINE] = self.NEG_INF
-        out[self.END_OF_LINE] = self.NEG_INF
+    for i in range(1024):
+      if chat_param['max_len'] >0:
+        if i <= 0:
+          nl_bias = self.NEG_INF
+        elif i <= chat_param['max_len']:
+          nl_bias = (i - chat_param['max_len']) * 0.1
+        else:
+          nl_bias = 0
+        out[self.DOUBLE_END_OF_LINE] += nl_bias
+      occurrence = {}
+      if self.chat_token_count > 256:
+        tokens_chunk = model_tokens[(out_last - 256):]
+      else:
+        tokens_chunk = model_tokens[begin:]
+      for token in tokens_chunk:
+        if token in self.AVOID_REPEAT_TOKENS:
+          continue
+        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
       if not chat_param['tau']:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
       else:
         token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
-      for o in occurrence:
-        if occurrence[o] > self.penalty_gate:
-          occurrence[o] *= self.penalty_decay
-      if token not in self.AVOID_REPEAT_TOKENS:
-        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
+        self.chat_token_count += 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, min_len=0, force_action=False):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, max_len=0, force_action=False):
     chat_param = {
       'top_p': top_p,
       'tau': tau,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
-      'min_len': min_len,
+      'max_len': max_len,
       'force_action': force_action
     }
     return chat_param
