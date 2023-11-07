@@ -21,12 +21,9 @@ class ModelUtils:
   DOUBLE_END_OF_LINE = 261
   CHN_PERIOD_END = 28329
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：*'
+  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
-  penalty_decay = 0.996
-  penalty_gate = 0.75
-  chat_token_count = 0
 
   def __init__(self, args):
     self.model_path = args.model
@@ -69,32 +66,23 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence_tokens=[]):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
     if chat_param['force_action']:
-      out[277] = 10
-    for i in range(1024):
-      if chat_param['max_len'] >0:
-        if i <= 0:
-          nl_bias = self.NEG_INF
-        elif i <= chat_param['max_len']:
-          nl_bias = (i - chat_param['max_len']) * 0.1
-        else:
-          nl_bias = 0
-        out[self.DOUBLE_END_OF_LINE] += nl_bias
-      occurrence = {}
-      if self.chat_token_count > 256:
-        tokens_chunk = model_tokens[(out_last - 256):]
-      else:
-        tokens_chunk = model_tokens[begin:]
-      for token in tokens_chunk:
-        if token in self.AVOID_REPEAT_TOKENS:
-          continue
-        occurrence[token] = 1 + (occurrence[token] if token in occurrence else 0)
+      out[23244] = 10
+    occurrence = {}
+    for t in occurrence_tokens:
+      if t in self.AVOID_REPEAT_TOKENS:
+        continue
+      occurrence[t] = 1
+    for i in range(500):
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
+      if i % 5 == 0:
+        for xxx in occurrence:
+          occurrence[xxx] *= 0.996
       if not chat_param['tau']:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
       else:
@@ -104,21 +92,19 @@ class ModelUtils:
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
-        self.chat_token_count += 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, max_len=0, force_action=False):
+  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action=False):
     chat_param = {
       'top_p': top_p,
       'tau': tau,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
-      'max_len': max_len,
       'force_action': force_action
     }
     return chat_param
