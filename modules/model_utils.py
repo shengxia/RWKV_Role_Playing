@@ -76,7 +76,10 @@ class ModelUtils:
     for t in occurrence_tokens:
       if t in self.AVOID_REPEAT_TOKENS:
         continue
-      occurrence[t] = 1
+      if t in occurrence:
+        occurrence[t] += 1
+      else:
+        occurrence[t] = 1
     for i in range(500):
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
@@ -86,6 +89,10 @@ class ModelUtils:
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
+      if token not in occurrence:
+        occurrence[token] = 1
+      else:
+        occurrence[token] += 1
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
