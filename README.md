@@ -86,13 +86,13 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4
 ```
 python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4096 --cuda_on 1
 ```
-但是你的机器必须安装Visual C++生成工具，以及Nvidia的CUDA，CUDA比较好解决（可能还得装CUDNN，我没验证到底要不要，反正我是都装了），去官网下载就行了，建议安装11.7版本，这个Visual C++生成工具可以参考[这个链接](https://learn.microsoft.com/zh-cn/training/modules/rust-set-up-environment/3-install-build-tools)装好之后还需要配置一下环境变量，如下图：
+但是你的机器必须安装Visual C++生成工具，以及Nvidia的CUDA以及CUDNN，CUDA和CUDNN比较好解决，去官网下载就行了，建议安装11.7版本，这个Visual C++生成工具可以参考[这个链接](https://learn.microsoft.com/zh-cn/training/modules/rust-set-up-environment/3-install-build-tools)装好之后还需要配置一下环境变量，如下图：
 ![图片3](./pic/3.png)
-我这里配置的值是C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Tools\MSVC\14.16.27023\bin\Hostx64\x64，你们根据实际情况进行配置，主要是找到cl.exe这个文件所在的文件夹，当然也要注意架构，不过一般来说，大家都是64位的系统了吧。这样就算是完成了，然后在运行脚本，你会发现文字的生成速度提高了很多。
+我这里配置的值是C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Tools\MSVC\14.16.27023\bin\Hostx64\x64，你们根据实际情况进行配置，主要是找到cl.exe这个文件所在的文件夹，当然也要注意架构，不过一般来说，大家都是64位的系统了吧。这样就算是完成了，然后再运行脚本，你会发现文字的生成速度提高了很多。
 
 ### 2. 我在哪里可以下载的到模型呢？
 
-当然是在[这里](https://huggingface.co/BlinkDL)，请使用RWKV-4-world系列CHNtuned模型，另外，如果使用参数量在1.5B及以下这样的模型，需要把策略改为cuda fp32或cpu fp32，否则会溢出。
+当然是在[这里](https://huggingface.co/BlinkDL)，请使用RWKV-4-world系列CHNtuned模型。
 
 另外，我也很推荐这个模型 https://huggingface.co/xiaol/RWKV-claude-4-World-7B-65k 
 这个模型是使用shareClaude进行微调的，且把上下文长度增加到了65k，玩起来效果很棒。
@@ -100,44 +100,22 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 还有这个模型 https://huggingface.co/xiaol/rwkv-7B-world-novel-128k
 这个模型使用了大量的小说进行微调，我发现这个模型对动作、场面等描写相当不错，而且最可贵的是，这个模型好像没啥善恶观，自由度挺高的，上下文长度为128k，也值得尝试一下。
 
-### 3. top_p、temperature、presence、frequency这几个参数有什么设置技巧吗？
+### 3. top_p、top_k, temperature、presence、frequency这几个参数有什么设置技巧吗？
 
 top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输出；temperature值越低，结果就越确定，因为总是选择概率最高的下一个词/token，拉高该值，其他可能的token的概率就会变大，随机性就越大，输出越多样化、越具创造性。
 
-根据我这段时间的把玩，感觉top_p最好设置在0.5以上，temperature可以设置在1.5以上。
-
-这里给出一个我使用的配置：
-```
-{
-  "top_p": 0.6,
-  "temperature": 1.5,
-  "presence": 0.2,
-  "frequency": 0.2
-}
-```
 模型尽量用新的、中文含量高的（我这里默认大家都用中文聊天）。
 
-这里建议在刚开始对话的时候，使用上面的那个配置，当对话进行到一定程度之后（大概六七轮左右），把配置改成下面的：
+这里建议使用如下配置：
 ```
 {
   "top_p": 0.75,
+  "top_k": 20,
   "temperature": 2.5,
   "presence": 0.2,
   "frequency": 0.2
 }
 ```
-另外，在开启“用User和Assistant代替你和角色的名字”这个选项后，会发现随着对话轮次的增加，角色的回复前几个字会变得一样，所以可以这样配置：
-```
-{
-  "top_p": 0.75,
-  "temperature": 2.5,
-  "presence": 0,
-  "frequency": 1
-}
-```
-还有，也可以试试top=0.7，temperature=0.1这种配置，我感觉这个效果也不错。
-
-另外，我最近加入了一种新的采样方式，当tau这个参数不为0的时候，则启用该方法，该采样方式下，top_p参数将会失效，其他的参数依然可以使用，反正感觉效果也挺微妙的，可以尝试尝试。
 
 ### 4. 模型会在输出回答后，又输出一大堆乱七八糟的内容。
 
@@ -188,6 +166,6 @@ User: xxxxxxxxxxxxxxx
 用户名: xxxxxxxxxxxxxxx
 
 ```
-随着模型的更新，目前7B的world-CHNtuned系列模型就算使用User和Assistant的感觉已经好了很多，而且对话生成的效果比使用“用户名和角色名”要好（配合最小生成长度这个参数，可以弄出claude的感觉），但是也会有一些思想钢印的存在（比如AI会很拒绝做坏事，就算做了也是不情不愿的，但是使用“用户名和角色名”时就不会这样）。总之可以根据各位的喜好来修改。
+随着模型的更新，目前7B的world-CHNtuned系列模型就算使用User和Assistant的感觉已经好了很多，而且对话生成的效果比使用“用户名和角色名”要好（目前7B的模型还是规模较小，生成过长的文字很容易跑偏，所以我把控制输出长度的功能都给删了），但是也会有一些思想钢印的存在（比如AI会很拒绝做坏事，就算做了也是不情不愿的，但是使用“用户名和角色名”时就不会这样）。总之可以根据各位的喜好来修改。
 
 **不过需要注意的是，在修改完角色选项卡中的任何项目并点击保存后，程序会清空当前的对话（不清空没办法让修改后的设置生效），所以进行此操作务必谨慎。**

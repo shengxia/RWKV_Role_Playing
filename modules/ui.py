@@ -55,10 +55,10 @@ class UI:
         save_list.append(f'{bot_name}')
       return save_list
   
-  def __save_config(self, f, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action):
+  def __save_config(self, f, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
     config = {
       'top_p': top_p, 
-      'tau': tau, 
+      'top_k': top_k, 
       'temperature': temperature, 
       'presence': presence_penalty, 
       'frequency': frequency_penalty,
@@ -67,9 +67,9 @@ class UI:
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.65, tau=0, temperature=2, presence_penalty=0.2, frequency_penalty=0.2, force_action=False):
+  def __save_config_role(self, top_p=0.65, top_k=0, temperature=2, presence_penalty=0.2, frequency_penalty=0.2, force_action=False):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.__save_config(f, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action)
+      self.__save_config(f, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action)
   
   # 保存角色
   def __save_char(self, file_name='', user='', bot='', greeting='', bot_persona='', example_message='', use_qa=False):
@@ -173,8 +173,8 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action, action_front, replace_message):
-    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action)
+  def __send_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action, action_front, replace_message):
+    text, action_text, chatbot = self.chat_model.on_message(message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -228,11 +228,11 @@ class UI:
     with open(self.config_role_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
-    if 'tau' not in configs_role:
-      configs_role['tau'] = 0    
+    if 'top_k' not in configs_role:
+      configs_role['top_k'] = 0    
     return_arr = (
       configs_role['top_p'], 
-      configs_role['tau'], 
+      configs_role['top_k'], 
       configs_role['temperature'], 
       configs_role['presence'], 
       configs_role['frequency'], 
@@ -298,7 +298,7 @@ class UI:
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
               force_action = gr.Checkbox(label='强制输出动作')
               top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
-              tau = gr.Slider(minimum=0, maximum=1, step=0.01, label='TAU')
+              top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Presence Penalty')
               frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Frequency Penalty')
@@ -320,7 +320,7 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action]
+      input_list = [message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action]
       output_list = [message, action, chatbot]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, action, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -351,7 +351,7 @@ class UI:
 
       reload_list = [
         top_p,
-        tau, 
+        top_k, 
         temperature, 
         presence_penalty, 
         frequency_penalty, 

@@ -64,7 +64,7 @@ class Chat:
     self.retry_count = 0
     return None, None, self.__generate_cai_chat_html()
   
-  def regen_msg(self, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action):
+  def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -75,14 +75,14 @@ class Chat:
     new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
-      top_p, tau, temperature, presence_penalty, frequency_penalty, force_action
+      top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
     )
     occurrence_tokens = self.__get_occurrence_tokens(True)
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens) 
     self.retry_count += 1
     return '', '', reply_text
   
-  def on_message(self, message, action, top_p, tau, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action):
+  def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action):
     if self.chunked_index:
       self.__flush_chat()
     message = message.strip().replace('\r\n','\n') if message else ''
@@ -113,7 +113,7 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
-        top_p, tau, temperature, presence_penalty, frequency_penalty, force_action
+        top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
       )
       occurrence_tokens = self.__get_occurrence_tokens()
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens)
@@ -128,13 +128,13 @@ class Chat:
     self.__save_chat()
     return self.__generate_cai_chat_html()
     
-  def get_prompt(self, top_p, tau, temperature, presence_penalty, frequency_penalty):
+  def get_prompt(self, top_p, top_k, temperature, presence_penalty, frequency_penalty):
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
     new = f"{self.role_info.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, tau, temperature, presence_penalty, frequency_penalty, 0)
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, frequency_penalty, 0)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     pos_arr = list(self.__find_all_chat(new_prompt[0]))
     chat_action_data = self.__format_chat_action(pos_arr, new_prompt[0])
