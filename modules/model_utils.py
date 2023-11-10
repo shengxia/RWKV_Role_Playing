@@ -80,13 +80,10 @@ class ModelUtils:
     for i in range(500):
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      if i % 5 == 0:
+      if i % 10 == 0:
         for xxx in occurrence:
           occurrence[xxx] *= 0.996
-      if not chat_param['tau']:
-        token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'])
-      else:
-        token = self.sample_typical(out, chat_param['tau'], chat_param['temperature'])
+      token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
@@ -98,10 +95,10 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, tau, temperature, presence_penalty, frequency_penalty, force_action=False):
+  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action=False):
     chat_param = {
       'top_p': top_p,
-      'tau': tau,
+      'top_k': top_k,
       'temperature': temperature,
       'presence_penalty': presence_penalty,
       'frequency_penalty': frequency_penalty,
@@ -112,20 +109,4 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
-
-  def sample_typical(self, logits, tau, temp):
-    probs = F.softmax(logits.float(), dim=-1)
-    logits = -torch.log(probs)
-    entropy = torch.nansum(logits * probs, dim=-1, keepdim=True)
-    logits = torch.abs(logits - entropy)
-    sorted_ids = torch.argsort(logits)
-    sorted_logits = logits[sorted_ids]
-    sorted_probs = probs[sorted_ids]
-    cumulative_probs = torch.cumsum(sorted_probs, dim=-1).cpu().numpy()
-    cutoff = np.sum(cumulative_probs < tau)
-    probs[logits > sorted_logits[cutoff]] = 0
-    if temp != 1.0:
-      probs = probs ** (1.0 / temp)
-    out = torch.multinomial(probs, num_samples=1)[0]
-    return int(out)
   
