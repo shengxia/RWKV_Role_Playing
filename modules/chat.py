@@ -28,6 +28,10 @@ class Chat:
     self.chunked_index = None
     self.role_info = RoleInfo(file_name, [], user, bot, greeting, bot_persona, example_message, 
                               use_qa, str(uuid.uuid1()).replace('-', ''))
+    try:
+      self.model_utils.remove_stat('chat_pre')
+    except:
+      pass
     if os.path.exists(f'save/{file_name}.sav'):
       self.load_state(file_name)
     else:
