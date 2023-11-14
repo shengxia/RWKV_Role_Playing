@@ -5,8 +5,8 @@ class RoleInfo:
     self.chatbot = chatbot
     self.user_chat = user
     self.bot_chat = bot
-    self.user = user if not use_qa else 'User'
-    self.bot = bot if not use_qa else 'Assistant' 
+    self.user = user if not use_qa else user + '|User'
+    self.bot = bot if not use_qa else bot + '|Assistant' 
     self.greeting = greeting 
     self.bot_persona = bot_persona
     self.example_message = example_message
