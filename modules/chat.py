@@ -249,7 +249,7 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       if row[1]:
-        msg = row[1].replace('\n', '').replace('（', '<em>').replace('）', '</em>')
+        msg = row[1].replace('\n', '').replace('（', '<em>').replace('）', '</em>').replace('(', '<em>').replace(')', '</em>')
         output += f"""
           <div class="message message_c">
             <div class="circle-bot">
@@ -266,7 +266,7 @@ class Chat:
           </div>
         """
       if row[0]:
-        msg = row[0].replace('\n', '').replace('（', '<em>').replace('）', '</em>')
+        msg = row[0].replace('\n', '').replace('（', '<em>').replace('）', '</em>').replace('(', '<em>').replace(')', '</em>')
         output += f"""
           <div class="message message_m">
             <div class="text_m">
