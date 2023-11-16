@@ -5,8 +5,6 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
-from torch.nn import functional as F
-import numpy as np
 import gc
 
 class ModelUtils:
@@ -73,26 +71,29 @@ class ModelUtils:
     if chat_param['force_action']:
       out[23244] = 10
     occurrence = {}
+    my_presence_penalty = 1
+    my_frequency_penalty = 0
     for t in occurrence_tokens:
       if t in self.AVOID_REPEAT_TOKENS:
         continue
       if t in occurrence:
         occurrence[t] += 1
       else:
-        occurrence[t] = 1
+        occurrence[t] = 0
     for i in range(500):
       for n in occurrence:
-        out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      if i % 10 == 0:
-        for xxx in occurrence:
-          occurrence[xxx] *= 0.996
+        # out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
+        out[n] -= (my_presence_penalty + occurrence[n] * my_frequency_penalty)
+      for xxx in occurrence:
+        occurrence[xxx] *= 0.996
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
-      if token not in occurrence:
-        occurrence[token] = 1
-      else:
-        occurrence[token] += 1
+      if token not in self.AVOID_REPEAT_TOKENS:
+        if token not in occurrence:
+          occurrence[token] = 1
+        else:
+          occurrence[token] += 1
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
@@ -100,6 +101,10 @@ class ModelUtils:
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
+      if my_presence_penalty > chat_param['presence_penalty']:
+        my_presence_penalty -= 0.1
+      if my_frequency_penalty < chat_param['frequency_penalty']:
+        my_presence_penalty += 0.1
     return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action=False):

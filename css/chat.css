@@ -54,24 +54,28 @@
   border-color: #e5e7eb;
   border-radius: 0 22px 22px 22px;
   background-color: #f9fafb;
+  color: #FFB7C5 !important;
 }
 
 .dark .message-body-c {
   border-color: #374151;
   border-radius: 0 22px 22px 22px;
   background-color: #111827;
+  color: #FFB7C5 !important;
 }
 
 .message-body-m {
   border-color: #fdba74;
   border-radius: 22px 0 22px 22px;
   background-color: #fff7ed;
+  color: orange !important;
 }
 
 .dark .message-body-m {
   border-color: #4b5563;
   border-radius: 22px 0 22px 22px;
   background-color: #374151;
+  color: orange !important;
 }
 
 .circle-bot {

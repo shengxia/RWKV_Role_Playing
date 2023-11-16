@@ -12,7 +12,6 @@ class Chat:
   chunked_index = None
   chat_length = 4000
   autosave = False
-  retry_count = 0
 
   def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
@@ -65,7 +64,6 @@ class Chat:
     if os.path.exists(save_file):
       os.remove(save_file)
     self.chunked_index = None
-    self.retry_count = 0
     return None, None, self.__generate_cai_chat_html()
   
   def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
@@ -83,7 +81,6 @@ class Chat:
     )
     occurrence_tokens = self.__get_occurrence_tokens(True)
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens) 
-    self.retry_count += 1
     return '', '', reply_text
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action):
@@ -121,7 +118,6 @@ class Chat:
       )
       occurrence_tokens = self.__get_occurrence_tokens()
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens)
-      self.retry_count = 0
       return '', '', reply_text
     
   def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence_tokens):
@@ -175,7 +171,6 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str2))
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.chunked_index = None
-    self.retry_count = 0
 
   def __save_log(self):
     os.makedirs(f'log/{self.role_info.file_name}/', exist_ok=True)
@@ -249,7 +244,7 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       if row[1]:
-        msg = row[1].replace('\n', '').replace('（', '<em>').replace('）', '</em>').replace('(', '<em>').replace(')', '</em>')
+        msg = self.__format_chat(row[1].replace('\n', ''))
         output += f"""
           <div class="message message_c">
             <div class="circle-bot">
@@ -266,7 +261,7 @@ class Chat:
           </div>
         """
       if row[0]:
-        msg = row[0].replace('\n', '').replace('（', '<em>').replace('）', '</em>').replace('(', '<em>').replace(')', '</em>')
+        msg = self.__format_chat(row[0].replace('\n', ''))
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -293,12 +288,15 @@ class Chat:
     em = self.role_info.example_message.replace(
       "<bot>", self.role_info.bot_chat).replace(
       "<user>", self.role_info.user_chat)
+    bp = self.role_info.bot_persona.replace(
+      "<bot>", self.role_info.bot_chat).replace(
+      "<user>", self.role_info.user_chat)
     init_prompt = {
       'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
-      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然，不要认为自己是AI。\n",
+      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话。\n",
       'en': f"The following is another coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}.\n"
     }
     init_prompt_final = init_prompt[self.lang]
@@ -307,7 +305,7 @@ class Chat:
       init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2_final}'
     else:
       init_prompt_final = f'{init_prompt_part2_final}'
-    init_prompt_final += f"{self.role_info.bot_persona}"
+    init_prompt_final += f"{bp}"
     init_prompt_final = init_prompt_final.strip().split('\n')
     for c in range(len(init_prompt_final)):
       init_prompt_final[c] = init_prompt_final[c].strip().strip('\u3000').strip('\r')
@@ -392,6 +390,13 @@ class Chat:
       if c[1]:
         i = c[1].replace(self.role_info.user_chat, ''
           ).replace(self.role_info.bot_chat, ''
-          ).replace(' ', '')
+          ).replace(' ', '')  
         bot_token += self.model_utils.pipeline.encode(i)
     return bot_token
+  
+  def __format_chat(self, text):
+    pattern1 = re.compile(r'（(.*?)）')
+    pattern2 = re.compile(r'\((.*?)\)')
+    new_text = re.sub(pattern1, r'<em>\1</em>', text)
+    final_text = re.sub(pattern2, r'<em>\1</em>', new_text)
+    return final_text
