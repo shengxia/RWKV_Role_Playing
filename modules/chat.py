@@ -179,7 +179,7 @@ class Chat:
       json.dump(dict_list, f, ensure_ascii=False, indent=2)
 
   def __save_init_state(self, file_name, out, model_tokens, model_state):
-    save_path = f"./chars/init_state/{file_name}.sav"
+    save_path = f"./save/init_state/{file_name}.sav"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     data = {
       "out": out,
@@ -193,7 +193,7 @@ class Chat:
     out = ''
     model_tokens = []
     model_state = None
-    save_file = f"./chars/init_state/{self.role_info.file_name}.sav"
+    save_file = f"./save/init_state/{self.role_info.file_name}.sav"
     if os.path.exists(save_file):
       with open(save_file, 'rb') as f:
         data = pickle.load(f)
