@@ -16,6 +16,8 @@ class RoleInfo:
     self.log_hash = log_hash
 
   def parse_greeting(self,greeting:str)->list[list[str]]:
+    if not greeting:
+      return []
     while greeting.find('\n\n\n')!= -1:
       greeting = greeting.replace('\n\n\n','\n\n')
     greetinglist = greeting.split('\n\n')
