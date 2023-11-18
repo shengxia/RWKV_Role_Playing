@@ -35,8 +35,6 @@ class Chat:
       self.load_state(file_name)
     else:
       out, model_tokens, model_state = self.__get_init_state()
-      if greeting:
-        self.role_info.chatbot = [[None, greeting]]
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     return self.__generate_cai_chat_html()
 
@@ -163,7 +161,7 @@ class Chat:
         self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       else:
         # 全量生成，主要慢在这里
-        chat_str = self.__get_chatbot_str(chatbot[1:-1])
+        chat_str = self.__get_chatbot_str(chatbot[len(self.role_info.greeting_chatbot):-1])
         out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(chat_str))
         self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       # 增量生成
@@ -291,6 +289,9 @@ class Chat:
     bp = self.role_info.bot_persona.replace(
       "<bot>", self.role_info.bot_chat).replace(
       "<user>", self.role_info.user_chat)
+    greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot).replace(
+      "<bot>", self.role_info.bot_chat).replace(
+      "<user>", self.role_info.user_chat)
     init_prompt = {
       'zh': f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。",
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
@@ -310,8 +311,8 @@ class Chat:
     for c in range(len(init_prompt_final)):
       init_prompt_final[c] = init_prompt_final[c].strip().strip('\u3000').strip('\r')
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
-    if self.role_info.greeting:
-      init_prompt_final += f"{self.role_info.bot}: {self.role_info.greeting}\n\n"
+    if greeting:
+      init_prompt_final += f"{greeting}\n\n"
     return f'{init_prompt_final}'
 
   def get_test_data(self):
