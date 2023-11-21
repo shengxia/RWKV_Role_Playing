@@ -278,8 +278,10 @@ class Chat:
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
     for row in chatbot:
-      chat_str += f'{self.role_info.user}: {row[0]}\n\n'
-      chat_str += f'{self.role_info.bot}: {row[1]}\n\n'
+      if row[0]:
+        chat_str += f'{self.role_info.user}: {row[0]}\n\n'
+      if row[1]:
+        chat_str += f'{self.role_info.bot}: {row[1]}\n\n'
     return chat_str
   
   def __get_init_prompt(self):
@@ -312,7 +314,7 @@ class Chat:
       init_prompt_final[c] = init_prompt_final[c].strip().strip('\u3000').strip('\r')
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if greeting:
-      init_prompt_final += f"{greeting}\n\n"
+      init_prompt_final += f"{greeting}"
     return f'{init_prompt_final}'
 
   def get_test_data(self):

@@ -243,7 +243,7 @@ class UI:
 
   # 创建UI
   def create_ui(self):
-    with gr.Blocks(title=self.language_conf['TITLE'], theme='dark') as app:
+    with gr.Blocks(title=self.language_conf['TITLE']) as app:
       if not os.path.isfile(self.config_role_path):
         self.__save_config_role()
 
