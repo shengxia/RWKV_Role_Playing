@@ -5,8 +5,9 @@ class RoleInfo:
     self.chatbot = chatbot
     self.user_chat = user
     self.bot_chat = bot
-    self.user = user if not use_qa else user + '|User'
-    self.bot = bot if not use_qa else bot + '|Assistant' 
+    self.use_qa = use_qa
+    self.user = user if not use_qa else 'User'
+    self.bot = bot if not use_qa else 'Assistant' 
     self.greeting = greeting
     self.greeting_chatbot = self.parse_greeting(greeting)
     if greeting:
@@ -33,8 +34,6 @@ class RoleInfo:
       else:
           bot.append([None,self.remove_qa_prefix(current_msg)])
     return bot
-
-
   
   def is_user(self,msg:str)->bool:
     return msg.startswith("<user>") or msg.startswith(self.user_chat)

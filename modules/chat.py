@@ -64,6 +64,11 @@ class Chat:
     self.chunked_index = None
     return None, None, self.__generate_cai_chat_html()
   
+  def __get_user_chat_prefix(self):
+    if self.role_info.use_qa:
+      return f"请扮演{self.role_info.bot_chat}回复{self.role_info.user_chat}，你的描述应当丰富且合理，DO NOT REPEAT YOURSELF：\n"
+    return ''
+  
   def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
     if self.chunked_index:
       self.__flush_chat()
@@ -72,7 +77,7 @@ class Chat:
     except:
       return '', '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
+    new = f'{self.role_info.user}: {self.__get_user_chat_prefix()}{user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
@@ -108,7 +113,7 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
+      new = f"{self.role_info.user}: {self.__get_user_chat_prefix()}{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
@@ -299,7 +304,7 @@ class Chat:
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
-      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话。\n",
+      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然，不要认为自己是AI。\n",
       'en': f"The following is another coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}.\n"
     }
     init_prompt_final = init_prompt[self.lang]
@@ -393,7 +398,7 @@ class Chat:
       if c[1]:
         i = c[1].replace(self.role_info.user_chat, ''
           ).replace(self.role_info.bot_chat, ''
-          ).replace(' ', '')  
+          ).replace(' ', '')
         bot_token += self.model_utils.pipeline.encode(i)
     return bot_token
   
