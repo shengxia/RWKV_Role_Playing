@@ -66,7 +66,7 @@ class Chat:
   
   def __get_user_chat_prefix(self):
     if self.role_info.use_qa:
-      return f"请扮演{self.role_info.bot_chat}回复{self.role_info.user_chat}，你的描述应当丰富且合理，DO NOT REPEAT YOURSELF：\n"
+      return f"【请扮演{self.role_info.bot_chat}并使用与前文不同的风格来回复下面{self.role_info.user_chat}的话，如果需要描述，那么你的描述应当丰富、详细、生动、合理且符合{self.role_info.bot_chat}的性格，DO NOT REPEAT YOURSELF：】\n"
     return ''
   
   def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
@@ -82,9 +82,12 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
     )
-    occurrence_tokens = self.__get_occurrence_tokens(True)
+    occurrence_tokens = self.__get_occurrence_tokens1(self.role_info.chatbot[-1][1])
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens) 
     return '', '', reply_text
+  
+  def __get_occurrence_tokens1(self, text):
+    return self.model_utils.pipeline.encode(text)
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action):
     if self.chunked_index:
@@ -113,13 +116,14 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {self.__get_user_chat_prefix()}{msg}\n\n{self.role_info.bot}:"
+      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
       )
       occurrence_tokens = self.__get_occurrence_tokens()
+      # occurrence_tokens = []
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens)
       return '', '', reply_text
     
@@ -320,6 +324,9 @@ class Chat:
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if greeting:
       init_prompt_final += f"{greeting}"
+      self.role_info.chatbot = [[None, greeting]]
+    else:
+      self.role_info.chatbot = []
     return f'{init_prompt_final}'
 
   def get_test_data(self):
@@ -387,19 +394,10 @@ class Chat:
           action = i[0]
     return chat, action
   
-  def __get_occurrence_tokens(self, is_pre=False):
-    chatbot = copy.deepcopy(self.role_info.chatbot)
-    if len(chatbot) > 3:
-      chatbot = chatbot[-3:]
-    if is_pre:
-      chatbot = chatbot[:-1]
-    bot_token = []
-    for c in chatbot:
-      if c[1]:
-        i = c[1].replace(self.role_info.user_chat, ''
-          ).replace(self.role_info.bot_chat, ''
-          ).replace(' ', '')
-        bot_token += self.model_utils.pipeline.encode(i)
+  def __get_occurrence_tokens(self):
+    if not self.role_info.chatbot[-1][1]:
+      return []
+    bot_token = self.model_utils.pipeline.encode(self.role_info.chatbot[-1][1])
     return bot_token
   
   def __format_chat(self, text):
