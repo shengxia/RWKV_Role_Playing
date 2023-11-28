@@ -66,7 +66,7 @@ class Chat:
   
   def __get_user_chat_prefix(self):
     if self.role_info.use_qa:
-      return f"【请扮演{self.role_info.bot_chat}并使用与前文不同的风格来回复下面{self.role_info.user_chat}的话，如果需要描述，那么你的描述应当丰富、详细、生动、合理且符合{self.role_info.bot_chat}的性格，DO NOT REPEAT YOURSELF：】\n"
+      return f"【请扮演{self.role_info.bot_chat}来回复{self.role_info.user_chat}，你的描述应当丰富、详细、生动、合理且符合{self.role_info.bot_chat}的性格：】\n"
     return ''
   
   def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
@@ -82,12 +82,9 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
     )
-    occurrence_tokens = self.__get_occurrence_tokens1(self.role_info.chatbot[-1][1])
+    occurrence_tokens = self.__get_occurrence_tokens()
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens) 
     return '', '', reply_text
-  
-  def __get_occurrence_tokens1(self, text):
-    return self.model_utils.pipeline.encode(text)
   
   def on_message(self, message, action, top_p, top_k, temperature, presence_penalty, frequency_penalty, action_front, replace_message, force_action):
     if self.chunked_index:
@@ -122,8 +119,7 @@ class Chat:
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
       )
-      occurrence_tokens = self.__get_occurrence_tokens()
-      # occurrence_tokens = []
+      occurrence_tokens = self.__get_occurrence_tokens(-2)
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence_tokens)
       return '', '', reply_text
     
@@ -394,10 +390,10 @@ class Chat:
           action = i[0]
     return chat, action
   
-  def __get_occurrence_tokens(self):
-    if not self.role_info.chatbot[-1][1]:
+  def __get_occurrence_tokens(self, id=-1):
+    if not self.role_info.chatbot[id][1]:
       return []
-    bot_token = self.model_utils.pipeline.encode(self.role_info.chatbot[-1][1])
+    bot_token = self.model_utils.pipeline.encode(self.role_info.chatbot[id][1])
     return bot_token
   
   def __format_chat(self, text):
