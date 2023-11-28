@@ -248,7 +248,7 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       if row[1]:
-        msg = self.__format_chat(row[1].replace('\n', ''))
+        msg = self.__format_chat(row[1].replace('\n', '<br>'))
         output += f"""
           <div class="message message_c">
             <div class="circle-bot">
@@ -265,7 +265,7 @@ class Chat:
           </div>
         """
       if row[0]:
-        msg = self.__format_chat(row[0].replace('\n', ''))
+        msg = self.__format_chat(row[0].replace('\n', '<br>'))
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -305,7 +305,7 @@ class Chat:
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
-      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然，不要认为自己是AI。\n",
+      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话。\n",
       'en': f"The following is another coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}.\n"
     }
     init_prompt_final = init_prompt[self.lang]
