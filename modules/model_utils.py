@@ -66,7 +66,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['force_action']:
-      out[23244] = 10
+      out[23244] = 1000
     occurrence = {}
     for t in occurrence_tokens:
       if t in self.AVOID_REPEAT_TOKENS:

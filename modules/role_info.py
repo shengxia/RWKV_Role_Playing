@@ -32,7 +32,7 @@ class RoleInfo:
         else:
           bot.append([self.remove_qa_prefix(current_msg),None])
       else:
-          bot.append([None,self.remove_qa_prefix(current_msg)])
+        bot.append([None,self.remove_qa_prefix(current_msg)])
     return bot
   
   def is_user(self,msg:str)->bool:
@@ -46,5 +46,7 @@ class RoleInfo:
             removeprefix(f"{self.user}:").
             removeprefix(f"{self.bot_chat}:").
             removeprefix(f"{self.user_chat}:").
-            strip()
+            strip().
+            replace("<user>", self.user_chat).
+            replace("<bot>", self.bot_chat)
             )
