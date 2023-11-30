@@ -5,8 +5,6 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
-from torch.nn import functional as F
-import numpy as np
 import gc
 
 class ModelUtils:
@@ -17,11 +15,8 @@ class ModelUtils:
   strategy = None
   CHUNK_LEN = 100
   END_OF_TEXT = 0
-  END_OF_LINE = 11
-  DOUBLE_END_OF_LINE = 261
-  CHN_PERIOD_END = 28329
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,()[]{}。！？，（）:：'
+  AVOID_REPEAT = '.!?,。！？，'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
 
@@ -71,7 +66,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['force_action']:
-      out[23244] = 10
+      out[23244] = 1000
     occurrence = {}
     for t in occurrence_tokens:
       if t in self.AVOID_REPEAT_TOKENS:
@@ -83,12 +78,11 @@ class ModelUtils:
     for i in range(500):
       for n in occurrence:
         out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
-      if i % 10 == 0:
-        for xxx in occurrence:
-          occurrence[xxx] *= 0.996
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
+      for xxx in occurrence:
+        occurrence[xxx] *= 0.996
       if token not in occurrence:
         occurrence[token] = 1
       else:

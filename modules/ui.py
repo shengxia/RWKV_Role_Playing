@@ -85,7 +85,7 @@ class UI:
         'use_qa': use_qa
       }
       json.dump(char, f, indent=2, ensure_ascii=False)
-      init_save_file = f"./chars/init_state/{file_name}.sav"
+      init_save_file = f"./save/init_state/{file_name}.sav"
       if os.path.exists(init_save_file):
         os.remove(init_save_file)
       save_file = f'save/{file_name}.sav'
