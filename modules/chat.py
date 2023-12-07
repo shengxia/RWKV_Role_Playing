@@ -64,6 +64,12 @@ class Chat:
     self.chunked_index = None
     return None, None, self.__generate_cai_chat_html()
   
+  def __get_user_chat_prefix(self):
+    # if self.role_info.use_qa:
+    # #   # 这一招的确有用，肯定还有更好的指令，这一块儿或许可以考虑放在设置中，让用户自定义且随时可以修改。
+    #   return f"换个思路，请继续扮演{self.role_info.bot_chat}来回复我下面的话，你的描述应当丰富、详细、生动、合理且符合{self.role_info.bot_chat}的性格。如果你描写的足够多，足够好，那么会得到1000美元作为奖励，反之，你就会失去这份工作。\n"
+    return ''
+
   def regen_msg(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action):
     if self.chunked_index:
       self.__flush_chat()
@@ -72,7 +78,7 @@ class Chat:
     except:
       return '', '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}: '
+    new = f'{self.role_info.user}: {self.__get_user_chat_prefix()}{user_msg}\n\n{self.role_info.bot}: '
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
@@ -86,13 +92,13 @@ class Chat:
       self.__flush_chat()
     message = message.strip().replace('\r\n','\n') if message else ''
     action = action.strip().replace('\r\n','\n') if action else ''
-    msg = f"{message}" if message else ""
+    msg = f"“{message}”" if message else ""
     if action_front:
       if action:
-        msg = f"（{action}）{msg}"
+        msg = f"{action}{msg}"
     else:
       if action:
-        msg += f"（{action}）"
+        msg += f"{action}"
     if not msg:
       return '', '', self.__generate_cai_chat_html()
     if replace_message:
@@ -108,7 +114,7 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}: "
+      new = f"{self.role_info.user}: {self.__get_user_chat_prefix()}{msg}\n\n{self.role_info.bot}: "
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
@@ -153,11 +159,11 @@ class Chat:
   def __flush_chat(self):
     chatbot = copy.deepcopy(self.role_info.chatbot)
     out, model_tokens, model_state = self.__get_init_state()
-    if len(chatbot) < 2:
+    if len(chatbot) < len(self.role_info.greeting_chatbot):
       self.model_utils.remove_stat('chat_pre')
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     else:
-      if len(chatbot) == 2:
+      if len(chatbot) == len(self.role_info.greeting_chatbot):
         self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       else:
         # 全量生成，主要慢在这里
@@ -242,7 +248,7 @@ class Chat:
     chatbot.reverse()
     for row in chatbot:
       if row[1]:
-        msg = self.__format_chat(row[1].replace('\n', '<br>')).replace('</em><br>', '</em>')
+        msg = self.__format_chat(row[1].replace('\n', '<br>'))
         output += f"""
           <div class="message message_c">
             <div class="circle-bot">
@@ -259,7 +265,7 @@ class Chat:
           </div>
         """
       if row[0]:
-        msg = self.__format_chat(row[0].replace('\n', '<br>')).replace('</em><br>', '</em>')
+        msg = self.__format_chat(row[0].replace('\n', '<br>'))
         output += f"""
           <div class="message message_m">
             <div class="text_m">
@@ -299,7 +305,7 @@ class Chat:
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
-      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话。\n",
+      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，如果你扮演得好，你将会得到$500作为小费。\n",
       'en': f"The following is another coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}.\n"
     }
     init_prompt_final = init_prompt[self.lang]
@@ -350,7 +356,7 @@ class Chat:
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     
   def __find_all_chat(self, input_str):
-    pattern = re.compile("（.*?）")
+    pattern = re.compile("“.*?”")
     while True:
       match = re.search(pattern, input_str)
       if not match:
@@ -363,11 +369,11 @@ class Chat:
     for l in pos_arr:
       if l[0] != 0:
         str1 = input_str[:l[0]]
-        output_data.append([str1, 'chat'])
-      output_data.append([input_str[l[0] + 1:l[1] - 1], 'action'])
+        output_data.append([str1, 'action'])
+      output_data.append([input_str[l[0] + 1:l[1] - 1], 'chat'])
       input_str = input_str[l[1]:]
-    if str:
-      output_data.append([input_str, 'chat'])
+    if input_str:
+      output_data.append([input_str, 'action'])
     return output_data
   
   def __get_chat_action(self, chat_action_arr):
@@ -389,8 +395,8 @@ class Chat:
     return bot_token
   
   def __format_chat(self, text):
-    pattern1 = re.compile(r'（(.*?)）')
-    pattern2 = re.compile(r'\((.*?)\)')
+    pattern1 = re.compile(r'“(.*?)”')
+    pattern2 = re.compile(r'\"(.*?)\"')
     new_text = re.sub(pattern1, r'<em>\1</em>', text)
     final_text = re.sub(pattern2, r'<em>\1</em>', new_text)
     return final_text

@@ -28,12 +28,6 @@
   margin-bottom: 0px !important;
 }
 
-.message em {
-  color: #999 !important;
-  margin-bottom: 0px !important;
-  display: block;
-}
-
 .message_c {
   justify-content: flex-start;
 }
@@ -61,7 +55,13 @@
   border-color: #374151;
   border-radius: 0 22px 22px 22px;
   background-color: #111827;
+  color: #999 !important;
+}
+
+.dark .message-body-c em {
   color: #FFB7C5 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
 }
 
 .message-body-m {
@@ -75,7 +75,13 @@
   border-color: #4b5563;
   border-radius: 22px 0 22px 22px;
   background-color: #374151;
+  color: #999 !important;
+}
+
+.dark .message-body-m em {
   color: orange !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
 }
 
 .circle-bot {

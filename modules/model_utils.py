@@ -16,7 +16,7 @@ class ModelUtils:
   CHUNK_LEN = 100
   END_OF_TEXT = 0
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,。！？，'
+  AVOID_REPEAT = '.!?,。！？，()（）'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
 
