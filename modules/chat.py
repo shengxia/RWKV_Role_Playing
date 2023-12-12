@@ -95,10 +95,11 @@ class Chat:
     msg = f"“{message}”" if message else ""
     if action_front:
       if action:
-        msg = f"{action}{msg}"
+        msg = f"{action}\n{msg}"
     else:
       if action:
-        msg += f"{action}"
+        msg += f"\n{action}"
+    msg = msg.strip()
     if not msg:
       return '', '', self.__generate_cai_chat_html()
     if replace_message:
@@ -305,7 +306,7 @@ class Chat:
       'en': f"The following is a coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     }
     init_prompt_part2 = {
-      'zh': f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，如果你扮演得好，你将会得到$500作为小费。\n",
+      'zh': f"Take a deep breath and concentrate, 根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，你只需要扮演{self.role_info.bot_chat}那部分。You will be awarded 1000$ if you act well, otherwise 100 grandmas will die due to your mistake.\n",
       'en': f"The following is another coherent verbose detailed conversation between {self.role_info.user_chat} and {self.role_info.bot_chat}.\n"
     }
     init_prompt_final = init_prompt[self.lang]
