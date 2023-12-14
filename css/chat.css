@@ -44,6 +44,17 @@
   padding: 10px;
 }
 
+.message-body pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 12px;
+  font-family: Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  background-color: #333;
+  padding: 8px;
+  margin-top: 8px;
+}
+
 .message-body-c {
   border-color: #e5e7eb;
   border-radius: 0 22px 22px 22px;
@@ -55,11 +66,11 @@
   border-color: #374151;
   border-radius: 0 22px 22px 22px;
   background-color: #111827;
-  color: #999 !important;
+  color: #FFB7C5 !important;
 }
 
 .dark .message-body-c em {
-  color: #FFB7C5 !important;
+  color: #999 !important;
   margin-bottom: 0px !important;
   font-style: normal;
 }
@@ -75,11 +86,11 @@
   border-color: #4b5563;
   border-radius: 22px 0 22px 22px;
   background-color: #374151;
-  color: #999 !important;
+  color: orange !important;
 }
 
 .dark .message-body-m em {
-  color: orange !important;
+  color: #999 !important;
   margin-bottom: 0px !important;
   font-style: normal;
 }
