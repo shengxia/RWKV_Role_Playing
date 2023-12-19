@@ -12,12 +12,14 @@ class Chat:
   chunked_index = None
   chat_length = 4000
   autosave = False
+  special_tag = False
 
-  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave, special_tag):
     self.model_utils = model_utils
     self.lang = lang
     self.autosave = autosave
     self.chat_length = chat_length
+    self.special_tag = special_tag
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
   
@@ -72,7 +74,7 @@ class Chat:
     except:
       return '', '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}: '
+    new = f'{self.role_info.user}: {user_msg}\n\n{self.__add_special_tag()}{self.role_info.bot}: '
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action
@@ -101,7 +103,7 @@ class Chat:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
       except:
         return '', '', self.__generate_cai_chat_html()
-      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}: {msg}\n\n"
+      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.__add_special_tag()}{self.role_info.bot}: {msg}\n\n"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot[-1][1] = msg
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -109,7 +111,7 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}: "
+      new = f"{self.role_info.user}: {msg}\n\n{self.__add_special_tag()}{self.role_info.bot}: "
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
@@ -120,7 +122,7 @@ class Chat:
       return '', '', reply_text
     
   def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence_tokens):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence_tokens)
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence_tokens, self.special_tag)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -278,9 +280,9 @@ class Chat:
     chat_str = ''
     for row in chatbot:
       if row[0]:
-        chat_str += f'{self.role_info.user}: {row[0]}\n\n'
+        chat_str += f'{self.__add_special_tag()}{self.role_info.user}: {row[0]}\n\n'
       if row[1]:
-        chat_str += f'{self.role_info.bot}: {row[1]}\n\n'
+        chat_str += f'{self.__add_special_tag()}{self.role_info.bot}: {row[1]}\n\n'
     return chat_str
   
   def __get_init_prompt(self):
@@ -294,19 +296,19 @@ class Chat:
       "<bot>", self.role_info.bot_chat).replace(
       "<user>", self.role_info.user_chat)
     init_prompt = f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。"
-    init_prompt_part2 = f"根据以下描述来扮演{self.role_info.bot_chat}和{self.role_info.user_chat}对话，如果你扮演得好，你将会得到$500作为小费。\n"
+    init_prompt_part2 = f"{self.__add_special_tag(1)}{self.role_info.user}: 阅读以下内容并扮演{self.role_info.bot_chat}来和{self.role_info.user_chat}对话。\n"
     init_prompt_final = init_prompt
     if em:
-      init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2}'
+      init_prompt_final += f'\n\n{em}\n\n{self.__add_special_tag()}{init_prompt_part2}'
     else:
       init_prompt_final = f'{init_prompt_part2}'
-    init_prompt_final += f"{bp}"
+    init_prompt_final += f"{bp}\n接下来进入角色扮演模式，如果你扮演得好，你将会得到$500作为小费。"
     init_prompt_final = init_prompt_final.strip().split('\n')
     for c in range(len(init_prompt_final)):
       init_prompt_final[c] = init_prompt_final[c].strip().strip('\u3000').strip('\r')
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if greeting:
-      init_prompt_final += f"{greeting}"
+      init_prompt_final += f"{greeting}{self.__add_special_tag()}"
     return f'{init_prompt_final}'
 
   def get_test_data(self):
@@ -388,3 +390,10 @@ class Chat:
     text2 = re.sub(pattern2, r'<em>\1</em>', text1)
     text3 = re.sub(pattern3, r'<pre>\1</pre>', text2)
     return text3
+  
+  def __add_special_tag(self, type=0):
+    if self.special_tag:
+      if type == 0:
+        return '</s>'
+      return '<s>'
+    return ''
