@@ -61,32 +61,25 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence_tokens=[], special_tag=False):
+  def get_reply(self, model_tokens, model_state, out, chat_param, special_tag=False):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    if chat_param['force_action']:
-      out[23244] = 1000
     occurrence = {}
-    for t in occurrence_tokens:
-      if t in self.AVOID_REPEAT_TOKENS:
-        continue
-      if t in occurrence:
-        occurrence[t] += 1
-      else:
-        occurrence[t] = 1
     for i in range(500):
       for n in occurrence:
-        out[n] -= (chat_param['presence_penalty'] + occurrence[n] * chat_param['frequency_penalty'])
+        if out[n] > 0:
+          out[n] = out[n] / (1 + chat_param['presence_penalty'])
+        else:
+          out[n] = out[n] * (1 + chat_param['presence_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
+      if token not in self.AVOID_REPEAT_TOKENS:
+        if token not in occurrence:
+          occurrence[token] = 1
+        else:
+          occurrence[token] += 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
-      for xxx in occurrence:
-        occurrence[xxx] *= 0.996
-      if token not in occurrence:
-        occurrence[token] = 1
-      else:
-        occurrence[token] += 1
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
@@ -101,14 +94,12 @@ class ModelUtils:
           break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, top_p, top_k, temperature, presence_penalty, frequency_penalty, force_action=False):
+  def format_chat_param(self, top_p, top_k, temperature, presence_penalty):
     chat_param = {
       'top_p': top_p,
       'top_k': top_k,
       'temperature': temperature,
-      'presence_penalty': presence_penalty,
-      'frequency_penalty': frequency_penalty,
-      'force_action': force_action
+      'presence_penalty': presence_penalty
     }
     return chat_param
   

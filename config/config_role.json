@@ -1,8 +1,7 @@
 {
-  "top_p": 0.7,
-  "top_k": 20,
-  "temperature": 2.5,
+  "top_p": 0.6,
+  "top_k": 0,
+  "temperature": 1.5,
   "presence": 0.2,
-  "frequency": 0.2,
-  "force_action": false
+  "frequency": 0.2
 }
