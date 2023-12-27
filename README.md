@@ -101,24 +101,22 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 还有这个模型 https://huggingface.co/xiaol/rwkv-7B-world-novel-128k
 这个模型使用了大量的小说进行微调，我发现这个模型对动作、场面等描写相当不错，而且最可贵的是，这个模型好像没啥善恶观，自由度挺高的，上下文长度为128k，也值得尝试一下。
 
-### 3. top_p、top_k, temperature、presence、frequency这几个参数有什么设置技巧吗？
+### 3. top_p、top_k, temperature、重复惩罚这几个参数有什么设置技巧吗？
 
 - top_p值越低，答案越准确而真实。更高的值鼓励更多样化的输出。
 - top_k值越低，答案越准确而真实。更高的值鼓励更多样化的输出。top_k会先于top_p生效，即先根据top_k值确定所选token范围后再根据top_p值确定所选token范围。
 - temperature值越低，结果就越确定，因为总是选择概率最高的下一个词/token，为 0 将始终产生几乎完全相同的输出。拉高该值，其他可能的token的概率就会变大，随机性就越大，输出越多样化、越具创造性。
-- presence值越低，对话中延续之前话题的几率越高。更高的值鼓励引入新话题。
-- frequency值越低，对话中重复之前已经用过词汇的几率越高。更高的值鼓励避免用词重复。
+- 重复惩罚值不建议太高，一般在0.1到0.3之间就行了，太高容易出问题。
 
 模型尽量用新的、中文含量高的（我这里默认大家都用中文聊天）。
 
 这里建议使用如下配置：
 ```
 {
-  "top_p": 0.75,
-  "top_k": 20,
-  "temperature": 2.5,
+  "top_p": 0.65,
+  "top_k": 0,
+  "temperature": 2,
   "presence": 0.2,
-  "frequency": 0.2
 }
 ```
 
