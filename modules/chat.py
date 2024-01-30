@@ -74,7 +74,7 @@ class Chat:
     except:
       return '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.__add_special_tag()}{self.role_info.bot}: '
+    new = f'{self.role_info.user}: {user_msg}\n\n{self.__add_special_tag()}{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty
@@ -101,7 +101,7 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.__add_special_tag()}{self.role_info.bot}: "
+      new = f"{self.role_info.user}: {msg}\n\n{self.__add_special_tag()}{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
