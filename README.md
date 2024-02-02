@@ -75,7 +75,6 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4
 | --share | 生成gradio链接 |
 | --lang | 语言，zh-中文，en-英文 |
 | --autosave | 是否自动保存，目前默认是不自动保存了，因为RWKV5的state变大了好多，如果需要的话记得把这个参数加上 |
-| --special_tag | 主要是适配xiaol的那个rwkv 12B的模型格式，如果使用那个模型的话，可以把这个给加上，可能会好一点 |
 
 模型的加载方式（--strategy）我默认使用的是"cuda fp16i8"，如果想使用其他的加载方式可以自行调整该参数，具体有哪些值可以参考[这个文章](https://zhuanlan.zhihu.com/p/609154637)或者这张图![图片](./pic/4.jpg)
 
