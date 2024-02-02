@@ -61,7 +61,7 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, special_tag=False):
+  def get_reply(self, model_tokens, model_state, out, chat_param):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
@@ -84,14 +84,9 @@ class ModelUtils:
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      if special_tag:
-        if '\n\n</s>' in send_msg:
-          send_msg = send_msg.replace("\n\n</s>", "")
-          break
-      else:
-        if '\n\n' in send_msg:
-          send_msg = send_msg.strip()
-          break
+      if '\n\n' in send_msg:
+        send_msg = send_msg.strip()
+        break
     return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty):

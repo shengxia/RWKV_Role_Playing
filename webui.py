@@ -10,7 +10,6 @@ parser.add_argument("--share", action="store_true", help="use gradio share")
 parser.add_argument("--lang", type=str, default="zh", help="zh: Chinese; en: English")
 parser.add_argument("--chat_length", type=int, default=4000, help="max chat length")
 parser.add_argument("--autosave", action="store_true", help="auto save state in each turn")
-parser.add_argument("--special_tag", action="store_true", help="add special tag '<s></s>' for chat")
 cmd_opts = parser.parse_args()
 
 import os
@@ -23,7 +22,7 @@ from modules.ui import UI
 if __name__ == "__main__":
   model_util = ModelUtils(cmd_opts)
   model_util.load_model()
-  ui = UI(model_util, cmd_opts.lang, cmd_opts.chat_length, cmd_opts.autosave, cmd_opts.special_tag)
+  ui = UI(model_util, cmd_opts.lang, cmd_opts.chat_length, cmd_opts.autosave)
   app = ui.create_ui()
   app.queue(concurrency_count=5, max_size=64).launch(
     server_name="0.0.0.0" if cmd_opts.listen else None, 
