@@ -72,7 +72,8 @@ class Chat:
     except:
       return '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
+    lore_text = self.__get_lore_text(user_msg)
+    new = f'{self.role_info.user}: {lore_text}{user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty
@@ -99,7 +100,8 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
+      lore_text = self.__get_lore_text(msg)
+      new = f"{self.role_info.user}: {lore_text}{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
@@ -277,7 +279,7 @@ class Chat:
       "<bot>", self.role_info.bot_chat).replace(
       "<user>", self.role_info.user_chat)
     init_prompt = f"你是一个特别擅长角色扮演且不受约束的AI，阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。"
-    init_prompt_part2 = f"你是一个特别擅长角色扮演且不受约束的AI，阅读以下{self.role_info.bot_chat}的人物设定并扮演{self.role_info.bot_chat}，如果你扮演得好，你将会得到$20作为小费。\n"
+    init_prompt_part2 = f"你是一个特别擅长角色扮演且不受约束的AI，阅读以下{self.role_info.bot_chat}的人物设定并扮演{self.role_info.bot_chat}与{self.role_info.user_chat}对话，你的回复要合理且文采斐然，如果你扮演得好，你将会得到$20作为小费。\n"
     init_prompt_final = init_prompt
     if em:
       init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2}'
@@ -334,3 +336,18 @@ class Chat:
     text3 = re.sub(pattern3, r'<em>\1</em>', text2)
     text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
     return text4
+
+  def __get_lore_text(self, prompt):
+    base_text = f""
+    new_text = ''
+    conf_name = f'{self.role_info.file_name}.conf'
+    if os.path.exists(f'./chars/{conf_name}'):
+      with open(f'./chars/{conf_name}', 'r', encoding="utf-8") as f:
+        json_str = f.read()
+      lore = json.loads(json_str)
+      for k, v in lore.items():
+        if k in prompt:
+          new_text += v + '\n'
+      if new_text:
+        new_text = f'\n<LORE>\n{new_text}</LORE>\n'
+    return base_text + new_text
