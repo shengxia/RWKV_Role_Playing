@@ -2,6 +2,7 @@ from modules.model_utils import ModelUtils
 from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
+import random
 
 class Chat:
   
@@ -75,6 +76,16 @@ class Chat:
     lore_text = self.__get_lore_text(user_msg)
     new = f'{self.role_info.user}: {lore_text}{user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+    r1 = random.random()
+    if r1 > 0.5:
+      top_p += 0.01
+    else:
+      top_p -= 0.01
+    r2 = random.random()
+    if r2 > 0.5:
+      temperature += 0.05
+    else:
+      temperature -= 0.05
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty
     )
@@ -338,7 +349,6 @@ class Chat:
     return text4
 
   def __get_lore_text(self, prompt):
-    base_text = f""
     new_text = ''
     conf_name = f'{self.role_info.file_name}.conf'
     if os.path.exists(f'./chars/{conf_name}'):
@@ -350,4 +360,4 @@ class Chat:
           new_text += v + '\n'
       if new_text:
         new_text = f'\n<LORE>\n{new_text}</LORE>\n'
-    return base_text + new_text
+    return new_text
