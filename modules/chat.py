@@ -76,16 +76,12 @@ class Chat:
     lore_text = self.__get_lore_text(user_msg)
     new = f'{self.role_info.user}: {lore_text}{user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    r1 = random.random()
-    if r1 > 0.5:
-      top_p += 0.01
-    else:
-      top_p -= 0.01
-    r2 = random.random()
-    if r2 > 0.5:
-      temperature += 0.05
-    else:
-      temperature -= 0.05
+    r1 = random.uniform(-1, 1)
+    top_p += round((0.05 * r1), 2)
+    r2 = random.uniform(-1, 1)
+    temperature += round(0.1 * r2, 2)
+    print(f"top_p: {top_p}")
+    print(f"temperature: {temperature}")
     chat_param = self.model_utils.format_chat_param(
       top_p, top_k, temperature, presence_penalty
     )
@@ -195,7 +191,7 @@ class Chat:
         model_state = data['model_state']
     else:
       init_prompt = self.__get_init_prompt()
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, [0] + self.model_utils.pipeline.encode(init_prompt))
       self.__save_init_state(self.role_info.file_name, out, model_tokens, model_state)
     return out, model_tokens, model_state
   
@@ -307,10 +303,10 @@ class Chat:
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 
-    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1])}"
+    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1][1:])}"
     try:
       data_pre = self.model_utils.load_all_stat('chat_pre')
-      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1])}"
+      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1][1:])}"
     except:
       txt_pre = ''
     return txt_now, txt_pre
