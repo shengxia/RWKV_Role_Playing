@@ -77,13 +77,11 @@ class Chat:
     new = f'{self.role_info.user}: {lore_text}{user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     r1 = random.uniform(-1, 1)
-    top_p += round((0.05 * r1), 2)
+    top_p += 0.05 * r1
     r2 = random.uniform(-1, 1)
-    temperature += round(0.1 * r2, 2)
-    print(f"top_p: {top_p}")
-    print(f"temperature: {temperature}")
+    temperature += 0.1 * r2
     chat_param = self.model_utils.format_chat_param(
-      top_p, top_k, temperature, presence_penalty
+      round(top_p, 2), top_k, round(temperature, 2), presence_penalty
     )
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state) 
     return '', reply_text

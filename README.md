@@ -48,7 +48,7 @@ python webui.py --listen --model model/path
 
 以下是一个例子: 
 ```
-python webui.py --listen --model model/RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4096
+python webui.py --listen --model model/RWKV-x060-World-3B-v2-20240228-ctx4096
 ```
 各种启动参数解释如下：
 
@@ -62,7 +62,7 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4
 | --jit_on | 控制RWKV_JIT_ON这个环境变量的，0-禁用，1-启用 |
 | --share | 生成gradio链接 |
 | --lang | 语言，zh-中文，en-英文 |
-| --autosave | 是否自动保存，目前默认是不自动保存了，因为RWKV5的state变大了好多，如果需要的话记得把这个参数加上 |
+| --autosave | 是否自动保存对话进度，目前默认是不自动保存了，因为RWKV5之后的state变大了好多，如果需要的话记得把这个参数加上 |
 
 模型的加载方式（--strategy）我默认使用的是"cuda fp16i8"，如果想使用其他的加载方式可以自行调整该参数，具体有哪些值可以参考[这个文章](https://zhuanlan.zhihu.com/p/609154637)或者这张图![图片](./pic/4.jpg)
 
@@ -72,7 +72,7 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-3B-v1-20230625-ctx4
 
 当然可以，在启动命令中加入--cuda_on 1，例子：
 ```
-python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4096 --cuda_on 1
+python webui.py --listen --model model/RWKV-x060-World-3B-v2-20240228-ctx4096 --cuda_on 1
 ```
 但是你的机器必须安装Visual C++生成工具，以及Nvidia的CUDA以及CUDNN，CUDA和CUDNN比较好解决，去官网下载就行了，建议安装11.7版本，这个Visual C++生成工具可以参考[这个链接](https://learn.microsoft.com/zh-cn/training/modules/rust-set-up-environment/3-install-build-tools)装好之后还需要配置一下环境变量，如下图：
 ![图片3](./pic/3.png)
@@ -95,7 +95,7 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 - temperature值越低，结果就越确定，因为总是选择概率最高的下一个词/token，为 0 将始终产生几乎完全相同的输出。拉高该值，其他可能的token的概率就会变大，随机性就越大，输出越多样化、越具创造性。
 - 重复惩罚值不建议太高，一般在0.1到0.3之间就行了，太高容易出问题。
 
-模型尽量用新的、中文含量高的（我这里默认大家都用中文聊天）。
+RWKV目前的迭代速度非常快，而且每次更新提升都很大，所以模型尽量用新的。
 
 这里建议使用如下配置：
 ```
@@ -120,31 +120,36 @@ python webui.py --listen --model model/RWKV-4-World-CHNtuned-7B-v1-20230709-ctx4
 ```
 其中冒号是英文冒号且冒号后面有一个空格，每句对话后面都有两个换行（\n\n）。如果可以，尽量不要在角色名中加空格。
 
-### 5. 为什么你的colab里要用fp16i8的7B模型？
+### 5. 为什么模型的输出内容总是和上一次的输出内容部分重复甚至完全重复？
+
+关于这一点我并不知道具体的原因，但是这一现象确实存在，我也在想办法避免，但是我的能力实在是有限，虽然做了一些尝试，但是效果并不好。
+目前我的感觉是，大概进行5到6轮对话后，开始出现回复内容部分重复现象，于是我尝试着在重新生成的时候对top_p和temperature参数增加一个小的随机的扰动，然后在对“\n\n”的生成上也进行了一些随机的扰动，让生成的回复尽量不要显得太有规律（经过测试，不能说是效果显著，只能说是聊胜于无）。所以实在不行，就通过“替角色说”这一个功能，把回复的内容给拷贝下来，然后把重复的地方给删了，这样或许效果会好一些。
+
+### 6. 为什么你的colab里要用fp16i8的7B模型？
 
 没办法啊，免费的colab就给12G的内存，我用原版的7B模型，加载需要内存14G，colab它加载不进去啊！
 
-### 6. 为什么不用流式输出？
+### 7. 为什么不用流式输出？
 
 在dev分支的某个版本中我尝试着使用了流式输出，虽然效果还不错，但是在对话久了之后，速度明显慢了，主要是传回的html代码大了，一句话十个字就得传10次，拖慢了速度，也有点耗费流量，感觉得不偿失（你说在本地用不怕耗流量？但是我喜欢用手机随时随地玩）当然，也可能是我的水平没到，写不出来增量传输。
 
-### 7. 为什么清除上一条对话然后再生成对话时，需要这么长的时间？
+### 8. 为什么清除上一条对话然后再生成对话时，需要这么长的时间？
 
 因为我不会用gradio清除多条对话，所以只能让用户一条一条的清除，但是以前的方法，每清除一条就要重新计算一次状态的确有点儿浪费，于是我改了一下逻辑，你可以随意清除上一条，我这边只记录下来你清除了多少，当你再次对话的时候，我就一次性的把状态回退到你清除的那个地方，这样在清除多条的时候就比较省时（当然了，这个重新计算状态所耗的时间实在是没办法，除非你勤存档）。
 
-### 8. 界面有英文了，为啥README没有英文？
+### 9. 界面有英文了，为啥README没有英文？
 
 别太难为我了，你要看了我那个英文的语言文件就知道我英文水平啥样了，出个英文的README有点儿太难为我了。
 
-### 9. 还有其他想说的吗？
+### 10. 还有其他想说的吗？
 
 我在角色选项卡中增加了一个选项，可以使用User和Assistant来代替你和角色的名称，使用该选项生成的格式如下：
 ```
-用户名|User: xxxxxxxxx
+User: xxxxxxxxx
 
-角色名|Assistant: xxxxxxxx
+Assistant: xxxxxxxx
 
-用户名|User: xxxxxxxxxxxxxxx
+User: xxxxxxxxxxxxxxx
 
 ```
 不使用该选项生成的格式如下：
