@@ -5,7 +5,7 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
-import gc
+import gc, random
 
 class ModelUtils:
 
@@ -61,37 +61,38 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, special_tag=False):
+  def get_reply(self, model_tokens, model_state, out, chat_param):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    for i in range(500):
+    short = 60 + random.randint(-10, 10)
+    chat_param['short'] = short
+    print(chat_param)
+    for i in range(300):
+      if i <= 0:
+        newline_adj = self.NEG_INF
+      elif i <= short:
+        newline_adj = (i - short) / 10
+      else:
+        newline_adj = 0
+      out[261] += newline_adj
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
-      if token not in self.AVOID_REPEAT_TOKENS:
-        if token not in occurrence:
-          occurrence[token] = 1
-        else:
-          occurrence[token] += 1
+      occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      if special_tag:
-        if '\n\n</s>' in send_msg:
-          send_msg = send_msg.replace("\n\n</s>", "")
-          break
-      else:
-        if '\n\n' in send_msg:
-          send_msg = send_msg.strip()
-          break
+      if '\n\n' in send_msg:
+        send_msg = send_msg.strip()
+        break
     return send_msg, out, model_tokens, model_state
   
   def format_chat_param(self, top_p, top_k, temperature, presence_penalty):

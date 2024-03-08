@@ -14,9 +14,9 @@ class UI:
   lock_flag_role = True
   language_conf = None
 
-  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave, special_tag):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
-    self.chat_model = Chat(model_utils, lang, chat_length, autosave, special_tag)
+    self.chat_model = Chat(model_utils, lang, chat_length, autosave)
     with open(f"{self.language_path}/{lang}.json", 'r', encoding='utf-8') as f:
       self.language_conf = json.loads(f.read())
 
@@ -29,15 +29,15 @@ class UI:
     return file_list
 
   def __get_file_list_by_extend(self, path:str, file_extend:str):
-      file_list = []
-      if os.path.exists(path) and os.path.isdir(path):
-        files=os.listdir(path)
-        files.sort()
-        for f in files:
-          file_name_arr = f.split('.')
-          if file_name_arr[-1] == file_extend:
-            file_list.append(file_name_arr[0])
-      return file_list
+    file_list = []
+    if os.path.exists(path) and os.path.isdir(path):
+      files=os.listdir(path)
+      files.sort()
+      for f in files:
+        file_name_arr = f.split('.')
+        if file_name_arr[-1] == file_extend:
+          file_list.append(file_name_arr[0])
+    return file_list
 
   # 更新角色列表
   def __update_chars_list(self):
@@ -50,10 +50,10 @@ class UI:
     return gr.Dropdown(choices=save_list)
 
   def __get_save_list(self, bot_name):
-      save_list = [ f'{bot_name}/' + i for i in self.__get_save_files(f'{self.save_path}/{bot_name}')]
-      if os.path.exists(f'{self.save_path}/{bot_name}.sav'):
-        save_list.append(f'{bot_name}')
-      return save_list
+    save_list = [ f'{bot_name}/' + i for i in self.__get_save_files(f'{self.save_path}/{bot_name}')]
+    if os.path.exists(f'{self.save_path}/{bot_name}.sav'):
+      save_list.append(f'{bot_name}')
+    return save_list
   
   def __save_config(self, f, top_p, top_k, temperature, presence_penalty):
     config = {

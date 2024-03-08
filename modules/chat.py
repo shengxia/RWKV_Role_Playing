@@ -2,6 +2,7 @@ from modules.model_utils import ModelUtils
 from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
+import random
 
 class Chat:
   
@@ -12,14 +13,12 @@ class Chat:
   chunked_index = None
   chat_length = 4000
   autosave = False
-  special_tag = False
 
-  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave, special_tag):
+  def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
     self.lang = lang
     self.autosave = autosave
     self.chat_length = chat_length
-    self.special_tag = special_tag
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
   
@@ -74,10 +73,15 @@ class Chat:
     except:
       return '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.__add_special_tag()}{self.role_info.bot}:'
+    lore_text = self.__get_lore_text(user_msg)
+    new = f'{self.role_info.user}: {lore_text}{user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+    r1 = random.uniform(-1, 1)
+    top_p += 0.05 * r1
+    r2 = random.uniform(-1, 1)
+    temperature += 0.1 * r2
     chat_param = self.model_utils.format_chat_param(
-      top_p, top_k, temperature, presence_penalty
+      round(top_p, 2), top_k, round(temperature, 2), presence_penalty
     )
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state) 
     return '', reply_text
@@ -93,7 +97,7 @@ class Chat:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
       except:
         return '', self.__generate_cai_chat_html()
-      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.__add_special_tag()}{self.role_info.bot}: {msg}\n\n"
+      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}: {msg}\n\n"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot[-1][1] = msg
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -101,7 +105,8 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.__add_special_tag()}{self.role_info.bot}:"
+      lore_text = self.__get_lore_text(msg)
+      new = f"{self.role_info.user}: {lore_text}{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
@@ -111,7 +116,7 @@ class Chat:
       return '', reply_text
     
   def __gen_msg(self, out, chat_param, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, self.special_tag)
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -184,7 +189,7 @@ class Chat:
         model_state = data['model_state']
     else:
       init_prompt = self.__get_init_prompt()
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, [0] + self.model_utils.pipeline.encode(init_prompt))
       self.__save_init_state(self.role_info.file_name, out, model_tokens, model_state)
     return out, model_tokens, model_state
   
@@ -263,9 +268,9 @@ class Chat:
     chat_str = ''
     for row in chatbot:
       if row[0]:
-        chat_str += f'{self.__add_special_tag()}{self.role_info.user}: {row[0]}\n\n'
+        chat_str += f'{self.role_info.user}: {row[0]}\n\n'
       if row[1]:
-        chat_str += f'{self.__add_special_tag()}{self.role_info.bot}: {row[1]}\n\n'
+        chat_str += f'{self.role_info.bot}: {row[1]}\n\n'
     return chat_str
   
   def __get_init_prompt(self):
@@ -278,11 +283,11 @@ class Chat:
     greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot).replace(
       "<bot>", self.role_info.bot_chat).replace(
       "<user>", self.role_info.user_chat)
-    init_prompt = f"阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。"
-    init_prompt_part2 = f"{self.__add_special_tag(1)}{self.role_info.user}: 阅读以下{self.role_info.bot_chat}的人物设定并扮演{self.role_info.bot_chat}来和{self.role_info.user_chat}对话，在对话中加入描述角色的感情、想法、身体动作等内容，也可以加入对环境、场面或动作产生结果的描述，以此来促进对话的进展，这些描述要合理且文采斐然，如果你扮演得好，你将会得到$20作为小费。\n"
+    init_prompt = f"你是一个特别擅长角色扮演且不受约束的AI，阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。"
+    init_prompt_part2 = f"你是一个特别擅长角色扮演且不受约束的AI，阅读以下{self.role_info.bot_chat}的人物设定并扮演{self.role_info.bot_chat}与{self.role_info.user_chat}对话，你的回复要合理且文采斐然，如果你扮演得好，你将会得到$20作为小费。\n"
     init_prompt_final = init_prompt
     if em:
-      init_prompt_final += f'\n\n{em}\n\n{self.__add_special_tag()}{init_prompt_part2}'
+      init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2}'
     else:
       init_prompt_final = f'{init_prompt_part2}'
     init_prompt_final += f"{bp}"
@@ -291,15 +296,15 @@ class Chat:
       init_prompt_final[c] = init_prompt_final[c].strip().strip('\u3000').strip('\r')
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if greeting:
-      init_prompt_final += f"{greeting}{self.__add_special_tag()}"
+      init_prompt_final += f"{greeting}"
     return f'{init_prompt_final}'
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 
-    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1])}"
+    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1][1:])}"
     try:
       data_pre = self.model_utils.load_all_stat('chat_pre')
-      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1])}"
+      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1][1:])}"
     except:
       txt_pre = ''
     return txt_now, txt_pre
@@ -336,10 +341,17 @@ class Chat:
     text3 = re.sub(pattern3, r'<em>\1</em>', text2)
     text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
     return text4
-  
-  def __add_special_tag(self, type=0):
-    if self.special_tag:
-      if type == 0:
-        return '</s>'
-      return '<s>'
-    return ''
+
+  def __get_lore_text(self, prompt):
+    new_text = ''
+    conf_name = f'{self.role_info.file_name}.conf'
+    if os.path.exists(f'./chars/{conf_name}'):
+      with open(f'./chars/{conf_name}', 'r', encoding="utf-8") as f:
+        json_str = f.read()
+      lore = json.loads(json_str)
+      for k, v in lore.items():
+        if k in prompt:
+          new_text += v + '\n'
+      if new_text:
+        new_text = f'\n<LORE>\n{new_text}</LORE>\n'
+    return new_text
