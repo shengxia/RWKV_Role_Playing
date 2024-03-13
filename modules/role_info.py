@@ -6,8 +6,8 @@ class RoleInfo:
     self.user_chat = user
     self.bot_chat = bot
     self.use_qa = use_qa
-    self.user = user if not use_qa else 'User'
-    self.bot = bot if not use_qa else 'Assistant' 
+    self.user = f'User: {user}' if not use_qa else 'User'
+    self.bot = f'Assistant: {bot}' if not use_qa else f'Assistant' 
     self.greeting = greeting
     self.greeting_chatbot = self.parse_greeting(greeting)
     if greeting:

@@ -189,7 +189,7 @@ class Chat:
         model_state = data['model_state']
     else:
       init_prompt = self.__get_init_prompt()
-      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, [0] + self.model_utils.pipeline.encode(init_prompt))
+      out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(init_prompt))
       self.__save_init_state(self.role_info.file_name, out, model_tokens, model_state)
     return out, model_tokens, model_state
   
@@ -301,10 +301,10 @@ class Chat:
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 
-    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1][1:])}"
+    txt_now = f"token count: {len(data_now[1])}\n\n{self.model_utils.pipeline.decode(data_now[1])}"
     try:
       data_pre = self.model_utils.load_all_stat('chat_pre')
-      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1][1:])}"
+      txt_pre = f"token count: {len(data_pre[1])}\n\n{self.model_utils.pipeline.decode(data_pre[1])}"
     except:
       txt_pre = ''
     return txt_now, txt_pre
@@ -353,5 +353,5 @@ class Chat:
         if k in prompt:
           new_text += v + '\n'
       if new_text:
-        new_text = f'\n<LORE>\n{new_text}</LORE>\n'
+        new_text = f'\n({new_text})\n'
     return new_text
