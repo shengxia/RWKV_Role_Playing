@@ -83,7 +83,8 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(
       round(top_p, 2), top_k, round(temperature, 2), presence_penalty
     )
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state) 
+    occurrence = self.__get_occurrence()
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence) 
     return '', reply_text
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, replace_message):
@@ -108,15 +109,16 @@ class Chat:
       lore_text = self.__get_lore_text(msg)
       new = f"{self.role_info.user}: {lore_text}{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+      occurrence = self.__get_occurrence()
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty
       )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence)
       return '', reply_text
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -358,3 +360,11 @@ class Chat:
       if new_text:
         new_text = f'\n({new_text})\n'
     return new_text
+  
+  def __get_occurrence(self):
+    last_reply = self.role_info.chatbot[-1][1]
+    bot_token = self.model_utils.pipeline.encode(last_reply)
+    occurrence = {}
+    for t in bot_token:
+      occurrence[t] = 1
+    return occurrence

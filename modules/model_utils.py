@@ -61,11 +61,10 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    occurrence = {}
     short = random.randint(20, 80)
     chat_param['short'] = short
     print(chat_param)
