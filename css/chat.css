@@ -114,6 +114,13 @@
   font-weight: bold;
 }
 
+.username .turn {
+  font-weight: 400;
+  color: #bbb;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 .username-m {
   text-align: right;
 }

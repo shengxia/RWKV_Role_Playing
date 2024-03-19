@@ -229,6 +229,8 @@ class Chat:
     img_bot = f'<img src="file/chars/{self.role_info.file_name}.png">' if Path(f'chars/{self.role_info.file_name}.png').exists() else ''
     chatbot = copy.deepcopy(self.role_info.chatbot)
     chatbot.reverse()
+    chat_length = len(chatbot)
+    turn = 0
     for row in chatbot:
       if row[1]:
         msg = self.__format_chat(row[1].replace('\n', '<br>')).replace('<pre><br>', '<pre>')
@@ -239,7 +241,7 @@ class Chat:
             </div>
             <div class="text_c">
               <div class="username">
-                {self.role_info.bot_chat}
+                {self.role_info.bot_chat}<span class="turn">({chat_length - turn}/{chat_length})</span>
               </div>
               <div class="message-body message-body-c">
                 {msg}
@@ -261,6 +263,7 @@ class Chat:
             </div>
           </div>
         """
+      turn += 1
     output += "</div>"
     return output
   
