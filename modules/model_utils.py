@@ -66,7 +66,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    short = 60 + random.randint(-10, 10)
+    short = random.randint(20, 80)
     chat_param['short'] = short
     print(chat_param)
     for i in range(300):
