@@ -3,6 +3,7 @@ from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
 import random
+from difflib import SequenceMatcher
 
 class Chat:
   
@@ -83,8 +84,9 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(
       round(top_p, 2), top_k, round(temperature, 2), presence_penalty
     )
+    ban_token = self.__check_similarity()
     occurrence = self.__get_occurrence()
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence) 
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token) 
     return '', reply_text
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, replace_message):
@@ -111,14 +113,15 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       occurrence = self.__get_occurrence()
       self.role_info.chatbot += [[msg, None]]
+      ban_token = self.__check_similarity()
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty
       )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token)
       return '', reply_text
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, ban_token):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, ban_token)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -366,5 +369,21 @@ class Chat:
     bot_token = self.model_utils.pipeline.encode(last_reply)
     occurrence = {}
     for t in bot_token:
-      occurrence[t] = 1
+      if t not in self.model_utils.AVOID_REPEAT_TOKENS:
+        occurrence[t] = 1
     return occurrence
+
+  def __check_similarity(self):
+    if len(self.role_info.chatbot) < 3:
+      return []
+    sentence1 = ' ' + self.role_info.chatbot[-2][1]
+    sentence2 = ' ' + self.role_info.chatbot[-3][1]
+    matcher = SequenceMatcher(None, sentence1, sentence2)
+    matches = [match for match in matcher.get_matching_blocks() if match[0] == 0]
+    longest_match = max(matches, key=lambda x: x[2] - x[1])
+    text = sentence1[longest_match[1]:longest_match[2]].replace(' *', '').replace(' (', '').replace(' (', '')
+    print(text)
+    if not text:
+      return []
+    return self.model_utils.pipeline.encode(text)
+    

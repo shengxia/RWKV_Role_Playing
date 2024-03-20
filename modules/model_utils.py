@@ -16,7 +16,7 @@ class ModelUtils:
   CHUNK_LEN = 100
   END_OF_TEXT = 0
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,。！？，()（）'
+  AVOID_REPEAT = '.!?,。！？，()（）*\n'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
 
@@ -61,7 +61,7 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, ban_token=[]):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
@@ -81,6 +81,8 @@ class ModelUtils:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
+      for b in ban_token:
+        out[b] -= 3
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
