@@ -156,11 +156,11 @@ User: xxxxxxxxxxxxxxx
 ```
 不使用该选项生成的格式如下：
 ```
-用户名: xxxxxxxxx
+User: 用户名: xxxxxxxxx
 
-角色名: xxxxxxxx
+Assistant: 角色名: xxxxxxxx
 
-用户名: xxxxxxxxxxxxxxx
+User: 用户名: xxxxxxxxxxxxxxx
 
 ```
 随着模型的更新，目前就算使用User和Assistant的感觉已经好了很多，而且对话生成的效果比使用“用户名和角色名”要好（目前7B的模型还是规模较小，生成过长的文字很容易跑偏，所以我把控制输出长度的功能都给删了），但是也会有一些思想钢印的存在（比如AI会很拒绝做坏事，就算做了也是不情不愿的，但是使用“用户名和角色名”时就不会这样）。总之可以根据各位的喜好来修改。
