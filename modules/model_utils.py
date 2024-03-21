@@ -16,7 +16,7 @@ class ModelUtils:
   CHUNK_LEN = 100
   END_OF_TEXT = 0
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,。！？，()（）*\n'
+  AVOID_REPEAT = '.!?,。！？，()（）*'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
 
@@ -69,12 +69,14 @@ class ModelUtils:
     print(chat_param)
     for i in range(300):
       for n in occurrence:
-        if out[n] > 0:
-          out[n] = out[n] / (1 + chat_param['presence_penalty'])
-        else:
-          out[n] = out[n] * (1 + chat_param['presence_penalty'])
+        if n not in self.AVOID_REPEAT_TOKENS:
+          if out[n] > 0:
+            out[n] = out[n] / (1 + chat_param['presence_penalty'])
+          else:
+            out[n] = out[n] * (1 + chat_param['presence_penalty'])
       for b in ban_token:
-        out[b] -= 3
+        if b not in self.AVOID_REPEAT_TOKENS:
+          out[b] -= 3
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])

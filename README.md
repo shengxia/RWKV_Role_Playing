@@ -100,12 +100,13 @@ RWKV目前的迭代速度非常快，而且每次更新提升都很大，所以�
 这里建议使用如下配置：
 ```
 {
-  "top_p": 0.65,
+  "top_p": 0.6,
   "top_k": 0,
   "temperature": 2,
-  "presence": 0.15,
+  "presence": 0.2,
 }
 ```
+如果感觉输出的内容比较长，可以降低top_p和temperature。
 
 ### 4. 模型会在输出回答后，又输出一大堆乱七八糟的内容。
 
@@ -156,11 +157,11 @@ User: xxxxxxxxxxxxxxx
 ```
 不使用该选项生成的格式如下：
 ```
-用户名: xxxxxxxxx
+User: 用户名: xxxxxxxxx
 
-角色名: xxxxxxxx
+Assistant: 角色名: xxxxxxxx
 
-用户名: xxxxxxxxxxxxxxx
+User: 用户名: xxxxxxxxxxxxxxx
 
 ```
 随着模型的更新，目前就算使用User和Assistant的感觉已经好了很多，而且对话生成的效果比使用“用户名和角色名”要好（目前7B的模型还是规模较小，生成过长的文字很容易跑偏，所以我把控制输出长度的功能都给删了），但是也会有一些思想钢印的存在（比如AI会很拒绝做坏事，就算做了也是不情不愿的，但是使用“用户名和角色名”时就不会这样）。总之可以根据各位的喜好来修改。
