@@ -3,6 +3,7 @@ from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
 import random
+# import jieba
 
 class Chat:
   
@@ -370,7 +371,7 @@ class Chat:
     # 暂时设定非英文就是中文
     return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
 
-  def __get_repeat_text(self, sentence1_arr, sentence2):
+  def __get_repeat_text(self, sentence1_arr, sentence2, is_Chinese):
     # 查找句子1中的哪些词在句子2中也存在，并记录下他们的位置编号
     c = 0
     res1 = {}
@@ -394,8 +395,10 @@ class Chat:
     # 在推理时对它们进行额外的降权
     result = []
     for i in res2:
-      if len(i) > 3:
+      if len(i) > 5:
         result += i
+    if is_Chinese:
+      return ''.join(result)
     return ' ' + ' '.join(result)
   
   # 比较上两次生成的话之间有没有重复的部分。
@@ -408,10 +411,12 @@ class Chat:
     if not is_Chinese:
       sentence1_arr = sentence1.split(' ')
     else:
-      sentence1_arr = sentence1
-    repeat_text = self.__get_repeat_text(sentence1_arr, sentence2)
+      return []
+      # sentence1_arr = list(jieba.cut(sentence1, cut_all=False))
+    repeat_text = self.__get_repeat_text(sentence1_arr, sentence2, is_Chinese)
     if is_Chinese:
       repeat_text = repeat_text.strip()
+    print(repeat_text)
     ban_token = list(set(self.model_utils.pipeline.encode(repeat_text)))
     return ban_token
   
@@ -422,14 +427,16 @@ class Chat:
     if not is_Chinese:
       sentence1_arr = sentence1.split(' ')
     else:
-      sentence1_arr = sentence1
+      return []
+      # sentence1_arr = list(jieba.cut(sentence1, cut_all=False))
     sentences = self.role_info.chatbot[-5:-1]
     result = []
     for sentence2 in sentences:
-      repeat_text = self.__get_repeat_text(sentence1_arr, sentence2[1])
+      repeat_text = self.__get_repeat_text(sentence1_arr, sentence2[1], is_Chinese)
       result.append(repeat_text)
     repeat_text = max(result, key=len)
     if is_Chinese:
       repeat_text = repeat_text.strip()
+    print(repeat_text)
     ban_token = list(set(self.model_utils.pipeline.encode(repeat_text)))
     return ban_token
