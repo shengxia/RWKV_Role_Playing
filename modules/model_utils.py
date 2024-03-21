@@ -65,7 +65,7 @@ class ModelUtils:
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    occurrence={},
+    occurrence = {}
     print(chat_param)
     for i in range(300):
       for n in occurrence:
