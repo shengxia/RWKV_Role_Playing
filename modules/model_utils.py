@@ -61,21 +61,13 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, ban_token=[]):
+  def get_reply(self, model_tokens, model_state, out, chat_param, ban_token=[]):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    short = random.randint(20, 80)
-    chat_param['short'] = short
+    occurrence={},
     print(chat_param)
     for i in range(300):
-      if i <= 0:
-        newline_adj = self.NEG_INF
-      elif i <= short:
-        newline_adj = (i - short) / 10
-      else:
-        newline_adj = 0
-      out[261] += newline_adj
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])

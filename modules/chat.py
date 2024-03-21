@@ -3,7 +3,6 @@ from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
 import random
-from difflib import SequenceMatcher
 
 class Chat:
   
@@ -14,6 +13,7 @@ class Chat:
   chunked_index = None
   chat_length = 4000
   autosave = False
+  ban_tokens = []
 
   def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
@@ -84,9 +84,10 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(
       round(top_p, 2), top_k, round(temperature, 2), presence_penalty
     )
-    ban_token = self.__check_similarity()
-    occurrence = self.__get_occurrence()
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token) 
+    ban_token1 = self.__check_similarity()
+    ban_token2 = self.__check_history_similarity()
+    self.ban_tokens = list(set(self.ban_tokens + ban_token1 + ban_token2))
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, self.ban_tokens) 
     return '', reply_text
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, replace_message):
@@ -104,6 +105,7 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot[-1][1] = msg
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
+      self.ban_tokens = []
       return '', self.__generate_cai_chat_html()
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
@@ -111,17 +113,17 @@ class Chat:
       lore_text = self.__get_lore_text(msg)
       new = f"{self.role_info.user}: {lore_text}{msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-      occurrence = self.__get_occurrence()
       self.role_info.chatbot += [[msg, None]]
       ban_token = self.__check_similarity()
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty
       )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token)
+      self.ban_tokens = []
       return '', reply_text
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, ban_token):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, ban_token)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, ban_token):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, ban_token)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -364,26 +366,70 @@ class Chat:
         new_text = f'\n({new_text})\n'
     return new_text
   
-  def __get_occurrence(self):
-    last_reply = self.role_info.chatbot[-1][1]
-    bot_token = self.model_utils.pipeline.encode(last_reply)
-    occurrence = {}
-    for t in bot_token:
-      if t not in self.model_utils.AVOID_REPEAT_TOKENS:
-        occurrence[t] = 1
-    return occurrence
+  def __is_Chinese(self, text):
+    # 暂时设定非英文就是中文
+    return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
 
+  def __get_repeat_text(self, sentence1_arr, sentence2):
+    # 查找句子1中的哪些词在句子2中也存在，并记录下他们的位置编号
+    c = 0
+    res1 = {}
+    for i in sentence1_arr:
+      if i in sentence2:
+        res1[c] = i
+      c += 1
+    # 用结果中的后一个编号减去前一个编号，如果结果是1，则说明这两个词是连续的，将连续的词放进一个数组，
+    # 将所有储存连续词的数组放进一个数组
+    res2 = []
+    pos = -1
+    k_last = -999
+    for k, v in res1.items():
+      if k - k_last == 1:
+        res2[pos] += [v]
+      else:
+        pos += 1
+        res2.append([v])
+      k_last = k
+    # 遍历储存连续词数组的数组，如果储存的连续词大于3个，就认为这些词是重复的词，需要收集起来，
+    # 在推理时对它们进行额外的降权
+    result = []
+    for i in res2:
+      if len(i) > 3:
+        result += i
+    return ' ' + ' '.join(result)
+  
+  # 比较上两次生成的话之间有没有重复的部分。
   def __check_similarity(self):
     if len(self.role_info.chatbot) < 3:
       return []
-    sentence1 = ' ' + self.role_info.chatbot[-2][1]
-    sentence2 = ' ' + self.role_info.chatbot[-3][1]
-    matcher = SequenceMatcher(None, sentence1, sentence2)
-    matches = [match for match in matcher.get_matching_blocks() if match[0] == 0]
-    longest_match = max(matches, key=lambda x: x[2] - x[1])
-    text = sentence1[longest_match[1]:longest_match[2]].replace(' *', '').replace(' (', '').replace(' (', '')
-    print(text)
-    if not text:
-      return []
-    return self.model_utils.pipeline.encode(text)
-    
+    sentence1 = self.role_info.chatbot[-2][1]
+    sentence2 = self.role_info.chatbot[-3][1]
+    is_Chinese = self.__is_Chinese(sentence1)
+    if not is_Chinese:
+      sentence1_arr = sentence1.split(' ')
+    else:
+      sentence1_arr = sentence1
+    repeat_text = self.__get_repeat_text(sentence1_arr, sentence2)
+    if is_Chinese:
+      repeat_text = repeat_text.strip()
+    ban_token = list(set(self.model_utils.pipeline.encode(repeat_text)))
+    return ban_token
+  
+  # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
+  def __check_history_similarity(self):
+    sentence1 = self.role_info.chatbot[-1][1]
+    is_Chinese = self.__is_Chinese(sentence1)
+    if not is_Chinese:
+      sentence1_arr = sentence1.split(' ')
+    else:
+      sentence1_arr = sentence1
+    sentences = self.role_info.chatbot[-5:-1]
+    result = []
+    for sentence2 in sentences:
+      repeat_text = self.__get_repeat_text(sentence1_arr, sentence2[1])
+      result.append(repeat_text)
+    repeat_text = max(result, key=len)
+    if is_Chinese:
+      repeat_text = repeat_text.strip()
+    ban_token = list(set(self.model_utils.pipeline.encode(repeat_text)))
+    return ban_token
