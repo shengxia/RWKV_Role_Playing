@@ -67,7 +67,7 @@ class Chat:
     self.chunked_index = None
     return None, self.__generate_cai_chat_html()
 
-  def regen_msg(self, top_p, top_k, temperature, presence_penalty):
+  def regen_msg(self, top_p, top_k, temperature, presence_penalty, context_penalty):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -83,7 +83,7 @@ class Chat:
     r2 = random.uniform(-1, 1)
     temperature += 0.1 * r2
     chat_param = self.model_utils.format_chat_param(
-      round(top_p, 2), top_k, round(temperature, 2), presence_penalty
+      round(top_p, 2), top_k, round(temperature, 2), presence_penalty, context_penalty
     )
     ban_token1 = self.__check_similarity()
     ban_token2 = self.__check_history_similarity()
@@ -91,7 +91,7 @@ class Chat:
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, self.ban_tokens) 
     return '', reply_text
   
-  def on_message(self, message, top_p, top_k, temperature, presence_penalty, replace_message):
+  def on_message(self, message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message):
     if self.chunked_index:
       self.__flush_chat()
     msg = message.strip().replace('\r\n','\n') if message else ''
@@ -117,7 +117,7 @@ class Chat:
       self.role_info.chatbot += [[msg, None]]
       ban_token = self.__check_similarity()
       chat_param = self.model_utils.format_chat_param(
-        top_p, top_k, temperature, presence_penalty
+        top_p, top_k, temperature, presence_penalty, context_penalty
       )
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token)
       self.ban_tokens = []
@@ -131,13 +131,13 @@ class Chat:
     self.__save_chat()
     return self.__generate_cai_chat_html()
     
-  def get_prompt(self, top_p, top_k, temperature, presence_penalty):
+  def get_prompt(self, top_p, top_k, temperature, presence_penalty, context_penalty):
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
     new = f"{self.role_info.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty)
+    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, context_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     return new_prompt[0]
   
@@ -383,8 +383,8 @@ class Chat:
     match_block = matcher.get_matching_blocks()
     result = []
     for m in match_block:
-      if m.size > gate:
-        repeat_arr = list1_str[m.a:m.a + m.size].strip().split(' ')
+      repeat_arr = list1_str[m.a:m.a + m.size].strip().split(' ')
+      if len(repeat_arr) > gate:
         result += repeat_arr
     return list(map(int, set(result)))
   
