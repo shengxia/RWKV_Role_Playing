@@ -55,19 +55,20 @@ class UI:
       save_list.append(f'{bot_name}')
     return save_list
   
-  def __save_config(self, f, top_p, top_k, temperature, presence_penalty):
+  def __save_config(self, f, top_p, top_k, temperature, presence_penalty, context_penalty):
     config = {
       'top_p': top_p, 
       'top_k': top_k, 
       'temperature': temperature, 
-      'presence': presence_penalty
+      'presence': presence_penalty,
+      'context': context_penalty
     }
     json.dump(config, f, indent=2)
 
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.65, top_k=0, temperature=2, presence_penalty=0.2):
+  def __save_config_role(self, top_p=0.65, top_k=0, temperature=2, presence_penalty=0.2, context_penalty=3):
     with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.__save_config(f, top_p, top_k, temperature, presence_penalty)
+      self.__save_config(f, top_p, top_k, temperature, presence_penalty, context_penalty)
   
   # 保存角色
   def __save_char(self, file_name='', user='', bot='', greeting='', bot_persona='', example_message='', use_qa=False):
@@ -171,8 +172,8 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, top_p, top_k, temperature, presence_penalty, replace_message):
-    text, chatbot = self.chat_model.on_message(message, top_p, top_k, temperature, presence_penalty, replace_message)
+  def __send_message(self, message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message):
+    text, chatbot = self.chat_model.on_message(message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -222,11 +223,14 @@ class UI:
     char_list = self.__get_json_files(self.char_path)
     if 'top_k' not in configs_role:
       configs_role['top_k'] = 0    
+    if 'context' not in configs_role:
+      configs_role['context'] = 3   
     return_arr = (
       configs_role['top_p'], 
       configs_role['top_k'], 
       configs_role['temperature'], 
       configs_role['presence'], 
+      configs_role['context'],
       gr.Dropdown(choices=char_list)
     )
     return return_arr
@@ -288,6 +292,7 @@ class UI:
               top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
+              context_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.1, label='上下文惩罚')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
@@ -306,7 +311,7 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, top_p, top_k, temperature, presence_penalty]
+      input_list = [message, top_p, top_k, temperature, presence_penalty, context_penalty]
       output_list = [message, chatbot]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -339,6 +344,7 @@ class UI:
         top_k, 
         temperature, 
         presence_penalty, 
+        context_penalty,
         char_dropdown
       ]
       app.load(self.__init_ui, outputs=reload_list)
