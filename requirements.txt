@@ -4,4 +4,3 @@ gradio==3.46.0
 ninja
 rwkv>=0.7.4
 numpy
-jieba

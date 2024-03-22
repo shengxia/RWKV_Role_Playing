@@ -76,7 +76,10 @@ class ModelUtils:
             out[n] = out[n] * (1 + chat_param['presence_penalty'])
       for b in ban_token:
         if b not in self.AVOID_REPEAT_TOKENS:
-          out[b] -= 3
+          if b > 10249 and b < 18494:
+            out[b] -= 1
+          else:
+            out[b] -= 3
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])

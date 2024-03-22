@@ -3,7 +3,7 @@ from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
 import random
-import jieba
+import difflib
 
 class Chat:
   
@@ -371,38 +371,22 @@ class Chat:
     # 暂时设定非英文就是中文
     return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
 
-  def __get_repeat_text(self, sentence1_arr, sentence2, is_Chinese):
-    separator = ' '
-    repeat_gate = 4
+  def __get_repeat_text(self, sentence1, sentence2, is_Chinese):
+    gate = 3
     if is_Chinese:
-      separator = ''
-      repeat_gate = 6
-    # 查找句子1中的哪些词在句子2中也存在，并记录下他们的位置编号
-    c = 0
-    res1 = {}
-    for i in sentence1_arr:
-      if i in sentence2:
-        res1[c] = i
-      c += 1
-    # 用结果中的后一个编号减去前一个编号，如果结果是1，则说明这两个词是连续的，将连续的词放进一个数组，
-    # 将所有储存连续词的数组放进一个数组
-    res2 = []
-    pos = -1
-    k_last = -999
-    for k, v in res1.items():
-      if k - k_last == 1:
-        res2[pos] += [v]
-      else:
-        pos += 1
-        res2.append([v])
-      k_last = k
-    # 遍历储存连续词数组的数组，如果储存的连续词大于3个，就认为这些词是重复的词，需要收集起来，
-    # 在推理时对它们进行额外的降权
+      gate = 5
+    tokens1 = self.model_utils.pipeline.encode(sentence1)
+    tokens2 = self.model_utils.pipeline.encode(sentence2)
+    list1_str = " ".join(map(str, tokens1))
+    list2_str = " ".join(map(str, tokens2))
+    matcher = difflib.SequenceMatcher(None, list1_str, list2_str)
+    match_block = matcher.get_matching_blocks()
     result = []
-    for i in res2:
-      if len(i) > repeat_gate:
-        result += i
-    return ' ' + separator.join(result)
+    for m in match_block:
+      if m.size > gate:
+        repeat_arr = list1_str[m.a:m.a + m.size].strip().split(' ')
+        result += repeat_arr
+    return list(map(int, set(result)))
   
   # 比较上两次生成的话之间有没有重复的部分。
   def __check_similarity(self):
@@ -411,31 +395,17 @@ class Chat:
     sentence1 = self.role_info.chatbot[-2][1]
     sentence2 = self.role_info.chatbot[-3][1]
     is_Chinese = self.__is_Chinese(sentence1)
-    if not is_Chinese:
-      sentence1_arr = sentence1.split(' ')
-    else:
-      sentence1_arr = list(jieba.cut(sentence1, cut_all=False))
-    repeat_text = self.__get_repeat_text(sentence1_arr, sentence2, is_Chinese)
-    if is_Chinese:
-      repeat_text = repeat_text.strip()
-    ban_token = list(set(self.model_utils.pipeline.encode(repeat_text)))
+    ban_token = self.__get_repeat_text(sentence1, sentence2, is_Chinese)
+    print(ban_token)
     return ban_token
   
   # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
   def __check_history_similarity(self):
     sentence1 = self.role_info.chatbot[-1][1]
     is_Chinese = self.__is_Chinese(sentence1)
-    if not is_Chinese:
-      sentence1_arr = sentence1.split(' ')
-    else:
-      sentence1_arr = list(jieba.cut(sentence1, cut_all=False))
     sentences = self.role_info.chatbot[-5:-1]
-    result = []
+    ban_token = []
     for sentence2 in sentences:
-      repeat_text = self.__get_repeat_text(sentence1_arr, sentence2[1], is_Chinese)
-      result.append(repeat_text)
-    repeat_text = max(result, key=len)
-    if is_Chinese:
-      repeat_text = repeat_text.strip()
-    ban_token = list(set(self.model_utils.pipeline.encode(repeat_text)))
-    return ban_token
+      ban_token += self.__get_repeat_text(sentence1, sentence2[1], is_Chinese)
+    print(ban_token)
+    return list(set(ban_token))
