@@ -370,11 +370,11 @@ class Chat:
   def __is_Chinese(self, text):
     # 暂时设定非英文就是中文
     return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
-
+  
   def __get_repeat_text(self, sentence1, sentence2, is_Chinese):
-    gate = 3
+    gate = 2
     if is_Chinese:
-      gate = 5
+      gate = 4
     tokens1 = self.model_utils.pipeline.encode(sentence1)
     tokens2 = self.model_utils.pipeline.encode(sentence2)
     list1_str = " ".join(map(str, tokens1))
@@ -383,10 +383,17 @@ class Chat:
     match_block = matcher.get_matching_blocks()
     result = []
     for m in match_block:
-      repeat_arr = list1_str[m.a:m.a + m.size].strip().split(' ')
-      if len(repeat_arr) > gate:
+      raw_str = list1_str[m.a:m.a + m.size].strip()
+      if not raw_str:
+        continue
+      repeat_arr = list(map(int, raw_str.split(' ')))
+      repeat_str = self.model_utils.pipeline.decode(repeat_arr).strip()
+      repeat_length = len(repeat_str)
+      if not is_Chinese:
+        repeat_length = len(repeat_str.split(' '))
+      if repeat_length > gate:
         result += repeat_arr
-    return list(map(int, set(result)))
+    return list(set(result))
   
   # 比较上两次生成的话之间有没有重复的部分。
   def __check_similarity(self):
@@ -396,16 +403,14 @@ class Chat:
     sentence2 = self.role_info.chatbot[-3][1]
     is_Chinese = self.__is_Chinese(sentence1)
     ban_token = self.__get_repeat_text(sentence1, sentence2, is_Chinese)
-    print(ban_token)
     return ban_token
   
   # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
   def __check_history_similarity(self):
     sentence1 = self.role_info.chatbot[-1][1]
-    is_Chinese = self.__is_Chinese(sentence1)
     sentences = self.role_info.chatbot[-5:-1]
+    is_Chinese = self.__is_Chinese(sentence1)
     ban_token = []
     for sentence2 in sentences:
       ban_token += self.__get_repeat_text(sentence1, sentence2[1], is_Chinese)
-    print(ban_token)
     return list(set(ban_token))
