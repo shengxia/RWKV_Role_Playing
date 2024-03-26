@@ -17,7 +17,7 @@ class ModelUtils:
   END_OF_TEXT = 0
   NEG_INF = -999999999
   AVOID_REPEAT = '.!?,。！？，()（）*'
-  AVOID_REPEAT_TOKENS = []
+  AVOID_REPEAT_TOKENS = [11]
   all_state = {}
 
   def __init__(self, args):
@@ -66,14 +66,12 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    print(chat_param)
     for i in range(300):
       for n in occurrence:
-        if n not in self.AVOID_REPEAT_TOKENS:
-          if out[n] > 0:
-            out[n] = out[n] / (1 + chat_param['presence_penalty'])
-          else:
-            out[n] = out[n] * (1 + chat_param['presence_penalty'])
+        if out[n] > 0:
+          out[n] = out[n] / (1 + chat_param['presence_penalty'])
+        else:
+          out[n] = out[n] * (1 + chat_param['presence_penalty'])
       for b in ban_token:
         if b not in self.AVOID_REPEAT_TOKENS:
           out[b] -= chat_param['context_penalty']
