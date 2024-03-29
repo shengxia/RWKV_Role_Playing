@@ -4,6 +4,7 @@ from pathlib import Path
 import os, json, pickle, copy, re, uuid
 import random
 import difflib
+import jieba
 
 class Chat:
   
@@ -14,7 +15,6 @@ class Chat:
   chunked_index = None
   chat_length = 4000
   autosave = False
-  ban_tokens = []
 
   def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
@@ -75,8 +75,7 @@ class Chat:
     except:
       return '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    lore_text = self.__get_lore_text(user_msg)
-    new = f'{self.role_info.user}: {lore_text}{user_msg}\n\n{self.role_info.bot}:'
+    new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     r1 = random.uniform(-1, 1)
     top_p += 0.05 * r1
@@ -85,10 +84,8 @@ class Chat:
     chat_param = self.model_utils.format_chat_param(
       round(top_p, 2), top_k, round(temperature, 2), presence_penalty, context_penalty
     )
-    ban_token1 = self.__check_similarity()
-    ban_token2 = self.__check_history_similarity()
-    self.ban_tokens = list(set(self.ban_tokens + ban_token1 + ban_token2))
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, self.ban_tokens) 
+    ban_token = self.__check_history_similarity()
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token) 
     return '', reply_text
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message):
@@ -111,11 +108,12 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      lore_text = self.__get_lore_text(msg)
-      new = f"{self.role_info.user}: {lore_text}{msg}\n\n{self.role_info.bot}:"
+      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
+      ban_token = []
+      if len(self.role_info.chatbot) >= 2:
+        ban_token = self.__check_history_similarity()
       self.role_info.chatbot += [[msg, None]]
-      ban_token = self.__check_similarity()
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty, context_penalty
       )
@@ -352,63 +350,38 @@ class Chat:
     text3 = re.sub(pattern3, r'<em>\1</em>', text2)
     text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
     return text4
-
-  def __get_lore_text(self, prompt):
-    new_text = ''
-    conf_name = f'{self.role_info.file_name}.conf'
-    if os.path.exists(f'./chars/{conf_name}'):
-      with open(f'./chars/{conf_name}', 'r', encoding="utf-8") as f:
-        json_str = f.read()
-      lore = json.loads(json_str)
-      for k, v in lore.items():
-        if k in prompt:
-          new_text += v + '\n'
-      if new_text:
-        new_text = f'\n({new_text})\n'
-    return new_text
   
   def __is_Chinese(self, text):
     # 暂时设定非英文就是中文
     return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
   
   def __get_repeat_text(self, sentence1, sentence2, is_Chinese):
-    gate = 2
-    if is_Chinese:
-      gate = 4
-    tokens1 = self.model_utils.pipeline.encode(sentence1)
-    tokens2 = self.model_utils.pipeline.encode(sentence2)
-    list1_str = " ".join(map(str, tokens1))
-    list2_str = " ".join(map(str, tokens2))
-    matcher = difflib.SequenceMatcher(None, list1_str, list2_str)
+    gate = 4
+    matcher = difflib.SequenceMatcher(None, sentence1, sentence2)
     match_block = matcher.get_matching_blocks()
     result = []
     for m in match_block:
-      raw_str = list1_str[m.a:m.a + m.size].strip()
+      raw_str = sentence1[m.a:m.a + m.size].strip()
       if not raw_str:
         continue
-      repeat_arr = list(map(int, raw_str.split(' ')))
-      repeat_str = self.model_utils.pipeline.decode(repeat_arr).strip()
-      repeat_length = len(repeat_str)
+      repeat_length = len(raw_str)
       if not is_Chinese:
-        repeat_length = len(repeat_str.split(' '))
+        lst = jieba.lcut(raw_str)
+        lst = [item for item in lst if item != ' ']
+        repeat_length = len(lst)
       if repeat_length > gate:
+        if not is_Chinese:
+          repeat_str = raw_str.replace(self.role_info.bot_chat, '').replace(self.role_info.user_chat, '')
+        else:
+          repeat_str = raw_str.replace(self.role_info.bot_chat, '').replace(self.role_info.user_chat, '')
+        repeat_arr = self.model_utils.pipeline.encode(repeat_str)
         result += repeat_arr
     return list(set(result))
-  
-  # 比较上两次生成的话之间有没有重复的部分。
-  def __check_similarity(self):
-    if len(self.role_info.chatbot) < 3:
-      return []
-    sentence1 = self.role_info.chatbot[-2][1]
-    sentence2 = self.role_info.chatbot[-3][1]
-    is_Chinese = self.__is_Chinese(sentence1)
-    ban_token = self.__get_repeat_text(sentence1, sentence2, is_Chinese)
-    return ban_token
   
   # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
   def __check_history_similarity(self):
     sentence1 = self.role_info.chatbot[-1][1]
-    sentences = self.role_info.chatbot[-5:-1]
+    sentences = self.role_info.chatbot[-10:-1]
     is_Chinese = self.__is_Chinese(sentence1)
     ban_token = []
     for sentence2 in sentences:

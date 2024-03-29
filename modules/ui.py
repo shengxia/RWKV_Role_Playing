@@ -292,7 +292,7 @@ class UI:
               top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
-              context_penalty = gr.Slider(minimum=0, maximum=5.0, step=0.1, label='上下文惩罚')
+              context_penalty = gr.Slider(minimum=0, maximum=10.0, step=0.1, label='上下文惩罚')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])

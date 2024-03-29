@@ -5,7 +5,7 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
-import gc, random
+import gc
 
 class ModelUtils:
 
@@ -17,7 +17,7 @@ class ModelUtils:
   END_OF_TEXT = 0
   NEG_INF = -999999999
   AVOID_REPEAT = '.!?,。！？，()（）*'
-  AVOID_REPEAT_TOKENS = [11]
+  AVOID_REPEAT_TOKENS = [11, 575, 578, 579, 580, 581]
   all_state = {}
 
   def __init__(self, args):
