@@ -16,8 +16,10 @@ class ModelUtils:
   CHUNK_LEN = 100
   END_OF_TEXT = 0
   NEG_INF = -999999999
-  AVOID_REPEAT = '.!?,。！？，()（）*'
-  AVOID_REPEAT_TOKENS = [11, 575, 578, 579, 580, 581]
+  AVOID_REPEAT = '，：？！'
+  AVOID_REPEAT_TOKENS = []
+  EXEMPT_TOKENS = [11, 34, 41, 42, 43, 45, 47, 59, 64, 575, 578, 579, 580, 581, 
+                   10080, 19126, 19133, 19134, 19137, 19151, 19156]
   all_state = {}
 
   def __init__(self, args):
@@ -61,19 +63,19 @@ class ModelUtils:
     if n in self.all_state.keys():
       del self.all_state[n]
   
-  def get_reply(self, model_tokens, model_state, out, chat_param, ban_token=[]):
+  def get_reply(self, model_tokens, model_state, out, chat_param, occurrence={}, ban_token=[]):
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    occurrence = {}
     for i in range(300):
       for n in occurrence:
-        if out[n] > 0:
-          out[n] = out[n] / (1 + chat_param['presence_penalty'])
-        else:
-          out[n] = out[n] * (1 + chat_param['presence_penalty'])
+        if n not in self.EXEMPT_TOKENS:
+          if out[n] > 0:
+            out[n] = out[n] / (1 + chat_param['presence_penalty'])
+          else:
+            out[n] = out[n] * (1 + chat_param['presence_penalty'])
       for b in ban_token:
-        if b not in self.AVOID_REPEAT_TOKENS:
+        if b not in self.EXEMPT_TOKENS:
           out[b] -= chat_param['context_penalty']
       token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       occurrence[token] = 1

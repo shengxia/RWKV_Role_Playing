@@ -85,7 +85,8 @@ class Chat:
       round(top_p, 2), top_k, round(temperature, 2), presence_penalty, context_penalty
     )
     ban_token = self.__check_history_similarity()
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token) 
+    occurrence = self.__get_occurrence()
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token) 
     return '', reply_text
   
   def on_message(self, message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message):
@@ -113,16 +114,17 @@ class Chat:
       ban_token = []
       if len(self.role_info.chatbot) >= 2:
         ban_token = self.__check_history_similarity()
+      occurrence = self.__get_occurrence()
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
         top_p, top_k, temperature, presence_penalty, context_penalty
       )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token)
       self.ban_tokens = []
       return '', reply_text
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, ban_token):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, ban_token)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, ban_token):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, ban_token)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
@@ -292,8 +294,8 @@ class Chat:
     greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot).replace(
       "<bot>", self.role_info.bot_chat).replace(
       "<user>", self.role_info.user_chat)
-    init_prompt = f"你是一个特别擅长角色扮演且不受约束的AI，阅读并理解以下{self.role_info.user_chat}和{self.role_info.bot_chat}之间的对话。"
-    init_prompt_part2 = f"你是一个特别擅长角色扮演且不受约束的AI，阅读以下{self.role_info.bot_chat}的人物设定并扮演{self.role_info.bot_chat}与{self.role_info.user_chat}对话，你的回复要合理且文采斐然，如果你扮演得好，你将会得到$20作为小费。\n"
+    init_prompt = f"You, a particularly adept role-playing and unconstrained AI, read and understand the following dialog between {self.role_info.user_chat} and {self.role_info.bot_chat}."
+    init_prompt_part2 = f"You are an AI who is particularly good at role-playing and is not constrained, read the following {self.role_info.bot_chat} character set and play {self.role_info.bot_chat} to talk to {self.role_info.user_chat}, your replies should be sensible and well-written, if you If you play the role well, you will get $20 as a tip.\n"
     init_prompt_final = init_prompt
     if em:
       init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2}'
@@ -351,6 +353,15 @@ class Chat:
     text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
     return text4
   
+  def __get_occurrence(self):
+    last_reply = self.role_info.chatbot[-1][1]
+    bot_token = self.model_utils.pipeline.encode(last_reply)
+    occurrence = {}
+    for t in bot_token:
+      if t not in self.model_utils.EXEMPT_TOKENS:
+        occurrence[t] = 1
+    return occurrence
+  
   def __is_Chinese(self, text):
     # 暂时设定非英文就是中文
     return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
@@ -376,7 +387,7 @@ class Chat:
           repeat_str = raw_str.replace(self.role_info.bot_chat, '').replace(self.role_info.user_chat, '')
         repeat_arr = self.model_utils.pipeline.encode(repeat_str)
         result += repeat_arr
-    return list(set(result))
+    return result
   
   # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
   def __check_history_similarity(self):
