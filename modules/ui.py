@@ -9,7 +9,7 @@ class UI:
   chat_model = None
   char_path = './chars'
   save_path = './save'
-  config_role_path = './config/config_role.json'
+  config_path = './config/config_role.json'
   language_path = './language/'
   lock_flag_role = True
   language_conf = None
@@ -55,20 +55,20 @@ class UI:
       save_list.append(f'{bot_name}')
     return save_list
   
-  def __save_config(self, f, top_p, top_k, temperature, presence_penalty, context_penalty):
-    config = {
-      'top_p': top_p, 
-      'top_k': top_k, 
-      'temperature': temperature, 
-      'presence': presence_penalty,
-      'context': context_penalty
-    }
-    json.dump(config, f, indent=2)
-
   # 保存角色扮演模式的配置
-  def __save_config_role(self, top_p=0.65, top_k=0, temperature=2, presence_penalty=0.2, context_penalty=3):
-    with open(self.config_role_path, 'w', encoding='utf8') as f:
-      self.__save_config(f, top_p, top_k, temperature, presence_penalty, context_penalty)
+  def __save_config(self, top_k=0, temperature=2, tau=3, lr=0.1, top_p=0.65, presence_penalty=0.2, frequency_penalty=0.2, context_penalty=3):
+    with open(self.config_path, 'w', encoding='utf8') as f:
+      config = {
+        'top_k': top_k, 
+        'temperature': temperature, 
+        'tau': tau,
+        'lr': lr,
+        'top_p': top_p, 
+        'presence': presence_penalty,
+        'frequency': frequency_penalty,
+        'context': context_penalty
+      }
+      json.dump(config, f, indent=2)
   
   # 保存角色
   def __save_char(self, file_name='', user='', bot='', greeting='', bot_persona='', example_message='', use_qa=False):
@@ -172,8 +172,10 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message):
-    text, chatbot = self.chat_model.on_message(message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message)
+  def __send_message(self, message, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, 
+                     context_penalty, replace_message):
+    text, chatbot = self.chat_model.on_message(message, top_k, temperature, tau, lr, top_p, presence_penalty, 
+                                               frequency_penalty, context_penalty, replace_message)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -218,18 +220,19 @@ class UI:
     
   # 初始化UI
   def __init_ui(self):
-    with open(self.config_role_path, 'r', encoding='utf-8') as f:
+    with open(self.config_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
-    if 'top_k' not in configs_role:
-      configs_role['top_k'] = 0    
-    if 'context' not in configs_role:
-      configs_role['context'] = 3   
+    config_items = ['top_p', 'top_k', 'temperature', 'presence', 'frequency', 'context']
+    for item in config_items:
+      if item not in configs_role:
+        configs_role[item] = 0
     return_arr = (
       configs_role['top_p'], 
       configs_role['top_k'], 
       configs_role['temperature'], 
       configs_role['presence'], 
+      configs_role['frequency'], 
       configs_role['context'],
       gr.Dropdown(choices=char_list)
     )
@@ -238,8 +241,8 @@ class UI:
   # 创建UI
   def create_ui(self):
     with gr.Blocks(title=self.language_conf['TITLE']) as app:
-      if not os.path.isfile(self.config_role_path):
-        self.__save_config_role()
+      if not os.path.isfile(self.config_path):
+        self.__save_config()
 
       with gr.Tab(self.language_conf['CHAT_TAB']):
         with gr.Row():
@@ -288,10 +291,16 @@ class UI:
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
-              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+              gr.Markdown('Nucleus取样选项')
               top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
-              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
+              gr.Markdown('Mirostat V2取样选项')
+              tau = gr.Slider(minimum=0, maximum=10, step=0.1, label='tau')
+              lr = gr.Slider(minimum=0, maximum=1, step=0.01, label='learn rate')
+              gr.Markdown('通用选项')
+              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='存在惩罚')
+              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='频率惩罚')
               context_penalty = gr.Slider(minimum=0, maximum=10.0, step=0.1, label='上下文惩罚')
               with gr.Row():
                 with gr.Column():
@@ -311,7 +320,7 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, top_p, top_k, temperature, presence_penalty, context_penalty]
+      input_list = [message, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty]
       output_list = [message, chatbot]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -322,7 +331,7 @@ class UI:
       load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
       save_btn.click(self.__save_save, inputs=[char_dropdown,save_file_name], outputs=[save_dropdown])
       save_update_btn.click(self.__save_update, inputs=[char_dropdown,save_dropdown], outputs=[save_dropdown])
-      save_conf.click(self.__save_config_role, inputs=input_list[1:])
+      save_conf.click(self.__save_config, inputs=input_list[1:])
       message.submit(self.__send_message, inputs=input_list + [replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
@@ -344,6 +353,7 @@ class UI:
         top_k, 
         temperature, 
         presence_penalty, 
+        frequency_penalty, 
         context_penalty,
         char_dropdown
       ]

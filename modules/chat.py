@@ -67,7 +67,7 @@ class Chat:
     self.chunked_index = None
     return None, self.__generate_cai_chat_html()
 
-  def regen_msg(self, top_p, top_k, temperature, presence_penalty, context_penalty):
+  def regen_msg(self, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -77,19 +77,17 @@ class Chat:
     user_msg = self.role_info.chatbot[-1][0]
     new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    r1 = random.uniform(-1, 1)
-    top_p += 0.05 * r1
-    r2 = random.uniform(-1, 1)
-    temperature += 0.1 * r2
     chat_param = self.model_utils.format_chat_param(
-      round(top_p, 2), top_k, round(temperature, 2), presence_penalty, context_penalty
+      top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty
     )
-    ban_token = self.__check_history_similarity()
-    occurrence = self.__get_occurrence()
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token) 
+    ban_token = []
+    if context_penalty:
+      ban_token = self.__check_history_similarity()
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token) 
     return '', reply_text
   
-  def on_message(self, message, top_p, top_k, temperature, presence_penalty, context_penalty, replace_message):
+  def on_message(self, message, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, 
+                 context_penalty, replace_message):
     if self.chunked_index:
       self.__flush_chat()
     msg = message.strip().replace('\r\n','\n') if message else ''
@@ -112,32 +110,32 @@ class Chat:
       new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       ban_token = []
-      if len(self.role_info.chatbot) >= 2:
+      if context_penalty and len(self.role_info.chatbot) >= 2:
         ban_token = self.__check_history_similarity()
-      occurrence = self.__get_occurrence()
       self.role_info.chatbot += [[msg, None]]
       chat_param = self.model_utils.format_chat_param(
-        top_p, top_k, temperature, presence_penalty, context_penalty
+        top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty
       )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, occurrence, ban_token)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token)
       self.ban_tokens = []
       return '', reply_text
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, occurrence, ban_token):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, occurrence, ban_token)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state, ban_token):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, ban_token)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
     self.__save_chat()
     return self.__generate_cai_chat_html()
     
-  def get_prompt(self, top_p, top_k, temperature, presence_penalty, context_penalty):
+  def get_prompt(self, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty):
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
     new = f"{self.role_info.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_p, top_k, temperature, presence_penalty, context_penalty)
+    chat_param = self.model_utils.format_chat_param(top_k, temperature, tau, lr, top_p, presence_penalty, 
+                                                    frequency_penalty, context_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     return new_prompt[0]
   
@@ -308,7 +306,7 @@ class Chat:
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if greeting:
       init_prompt_final += f"{greeting}"
-    return f'{init_prompt_final}'
+    return f'System: {init_prompt_final}'
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 
@@ -353,15 +351,6 @@ class Chat:
     text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
     return text4
   
-  def __get_occurrence(self):
-    last_reply = self.role_info.chatbot[-1][1]
-    bot_token = self.model_utils.pipeline.encode(last_reply)
-    occurrence = {}
-    for t in bot_token:
-      if t not in self.model_utils.EXEMPT_TOKENS:
-        occurrence[t] = 1
-    return occurrence
-  
   def __is_Chinese(self, text):
     # 暂时设定非英文就是中文
     return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
@@ -391,10 +380,10 @@ class Chat:
   
   # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
   def __check_history_similarity(self):
-    sentence1 = self.role_info.chatbot[-1][1]
+    sentence1 = ' ' + self.role_info.chatbot[-1][1]
     sentences = self.role_info.chatbot[-10:-1]
     is_Chinese = self.__is_Chinese(sentence1)
     ban_token = []
     for sentence2 in sentences:
-      ban_token += self.__get_repeat_text(sentence1, sentence2[1], is_Chinese)
+      ban_token += self.__get_repeat_text(sentence1, ' ' + sentence2[1], is_Chinese)
     return list(set(ban_token))
