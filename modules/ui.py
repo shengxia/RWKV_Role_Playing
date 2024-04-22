@@ -223,14 +223,16 @@ class UI:
     with open(self.config_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
-    config_items = ['top_p', 'top_k', 'temperature', 'presence', 'frequency', 'context']
+    config_items = ['top_k', 'temperature', 'tau', 'lr', 'top_p', 'presence', 'frequency', 'context']
     for item in config_items:
       if item not in configs_role:
         configs_role[item] = 0
     return_arr = (
-      configs_role['top_p'], 
       configs_role['top_k'], 
       configs_role['temperature'], 
+      configs_role['tau'], 
+      configs_role['lr'], 
+      configs_role['top_p'], 
       configs_role['presence'], 
       configs_role['frequency'], 
       configs_role['context'],
@@ -349,9 +351,11 @@ class UI:
       test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       reload_list = [
-        top_p,
         top_k, 
         temperature, 
+        tau,
+        lr,
+        top_p,
         presence_penalty, 
         frequency_penalty, 
         context_penalty,
