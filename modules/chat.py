@@ -2,7 +2,6 @@ from modules.model_utils import ModelUtils
 from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
-import random
 import difflib
 import jieba
 

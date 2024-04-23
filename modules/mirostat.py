@@ -15,10 +15,13 @@ class Mirostat(object):
   def choise(self, out: Tensor) -> int:
     sorted_logits, sorted_indices = torch.sort(out, descending=True)
     prob_original = torch.softmax(sorted_logits, dim=-1)
-    probs = prob_original.cpu().numpy()
-    cumulative_probs = np.cumsum(probs)
-    cutoff = float(prob_original[np.argmax(cumulative_probs >= self.top_p)])
-    prob_original = prob_original[prob_original < cutoff].tolist()
+    if self.top_p >= 1 or self.top_p <= 0:
+      prob_original = prob_original.tolist()
+    else:
+      probs = prob_original.cpu().numpy()
+      cumulative_probs = np.cumsum(probs)
+      cutoff = float(prob_original[np.argmax(cumulative_probs >= self.top_p)])
+      prob_original = prob_original[prob_original < cutoff].tolist()
     for i, candidate in enumerate(prob_original):
       if candidate > 0 and -math.log2(candidate) > self.max_surprise:
         if (i == 0):
@@ -32,5 +35,5 @@ class Mirostat(object):
     observed_surprise = -math.log2(prob_topk[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
-    self.max_surprise = min(self.max_surprise, 4 * self.tau)
+    self.max_surprise = min(self.max_surprise, 4  * self.tau)
     return int(prev[0])

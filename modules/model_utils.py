@@ -71,8 +71,8 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    self.miro.rate = chat_param['lr']
     self.miro.tau = chat_param['tau']
+    self.miro.rate = chat_param['lr']
     self.miro.top_p = chat_param['top_p']
     for i in range(300):
       for n in occurrence:
