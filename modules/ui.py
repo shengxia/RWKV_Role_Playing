@@ -250,7 +250,7 @@ class UI:
         with gr.Row():
           with gr.Column(scale=3):
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
-            message = gr.Textbox(placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
+            message = gr.TextArea(lines=2, placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
             with gr.Row():
               replace_message = gr.Checkbox(label=self.language_conf['TAMPER'])
             with gr.Row():
@@ -294,13 +294,13 @@ class UI:
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
               gr.Markdown('Nucleus取样选项')
+              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
               top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
               gr.Markdown('Mirostat V2取样选项')
               tau = gr.Slider(minimum=0, maximum=10, step=0.1, label='TAU')
               lr = gr.Slider(minimum=0, maximum=1, step=0.01, label='Learning Rate')
               gr.Markdown('通用选项')
-              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='存在惩罚')
               frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='频率惩罚')
               context_penalty = gr.Slider(minimum=0, maximum=10.0, step=0.1, label='上下文惩罚')
