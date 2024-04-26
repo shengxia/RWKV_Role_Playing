@@ -305,7 +305,7 @@ class Chat:
     init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
     if greeting:
       init_prompt_final += f"{greeting}"
-    return f'System: {init_prompt_final}'
+    return f'{init_prompt_final}'
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 

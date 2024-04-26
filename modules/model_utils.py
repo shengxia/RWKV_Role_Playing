@@ -71,10 +71,10 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    self.miro.tau = chat_param['tau']
-    self.miro.rate = chat_param['lr']
-    self.miro.top_p = chat_param['top_p']
+    self.miro.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
     for i in range(300):
+      if i > 20:
+        out[261] += (i - 20) * 0.01
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
@@ -85,7 +85,7 @@ class ModelUtils:
         if b not in self.EXEMPT_TOKENS:
           out[b] -= chat_param['context_penalty']
       if chat_param['tau']:
-        token = self.miro.choise(out.view(out.numel()))
+        token = self.miro.choise(out)
       else:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       if token not in occurrence:
