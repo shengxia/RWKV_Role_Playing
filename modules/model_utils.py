@@ -73,6 +73,8 @@ class ModelUtils:
     occurrence = {}
     self.miro.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
     for i in range(300):
+      if i > 20:
+        out[261] += (i - 20) * 0.01
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
