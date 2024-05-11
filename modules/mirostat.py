@@ -25,7 +25,7 @@ class Mirostat(object):
     prob_topk = torch.softmax(sorted_logits, dim=-1)
     prev_i = torch.multinomial(prob_topk, num_samples=1, replacement=True)
     prev = sorted_indices[prev_i]
-    observed_surprise =  -math.log2(prob_topk[prev_i])
+    observed_surprise = -math.log2(prob_original[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
     self.max_surprise = min(self.max_surprise, 4 * self.tau)
