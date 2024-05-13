@@ -56,6 +56,7 @@ python webui.py --listen --model model/RWKV-x060-World-3B-v2-20240228-ctx4096
 | --- | --- |
 | --port | webui的端口 |
 | --model | 要加载的模型路径 |
+| --state | 要加载的state路径 |
 | --strategy | 模型加载的策略 |
 | --listen | 加上这个参数就允许其他机器访问 |
 | --cuda_on | 控制RWKV_CUDA_ON这个环境变量的，0-禁用，1-启用 |
