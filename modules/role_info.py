@@ -6,8 +6,8 @@ class RoleInfo:
     self.user_chat = user
     self.bot_chat = bot
     self.use_qa = use_qa
-    self.user = f'User: {user}' if not use_qa else 'User'
-    self.bot = f'Assistant: {bot}' if not use_qa else f'Assistant' 
+    self.user = f'{user}' if not use_qa else 'User'
+    self.bot = f'{bot}' if not use_qa else f'Assistant' 
     self.greeting = greeting
     self.greeting_chatbot = self.parse_greeting(greeting)
     if greeting:
@@ -36,17 +36,17 @@ class RoleInfo:
     return bot
   
   def is_user(self,msg:str)->bool:
-    return msg.startswith("<user>") or msg.startswith(self.user_chat)
+    return msg.startswith("{{user}}") or msg.startswith(self.user_chat)
 
   def remove_qa_prefix(self,msg:str)->str:
     return (msg.
-            removeprefix("<user>:").
-            removeprefix("<bot>:").
+            removeprefix("{{user}}:").
+            removeprefix("{{char}}:").
             removeprefix(f"{self.bot}:").
             removeprefix(f"{self.user}:").
             removeprefix(f"{self.bot_chat}:").
             removeprefix(f"{self.user_chat}:").
             strip().
-            replace("<user>", self.user_chat).
-            replace("<bot>", self.bot_chat)
+            replace("{{user}}", self.user_chat).
+            replace("{{char}}", self.bot_chat)
             )

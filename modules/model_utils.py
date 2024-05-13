@@ -13,6 +13,7 @@ class ModelUtils:
   model = None
   pipline = None
   model_path = None
+  state_path = None
   strategy = None
   CHUNK_LEN = 100
   END_OF_TEXT = 0
@@ -22,20 +23,43 @@ class ModelUtils:
   EXEMPT_TOKENS = [11, 34, 41, 42, 43, 45, 47, 59, 64, 575, 578, 579, 580, 581, 6884,
                    10080, 19126, 19133, 19134, 19137, 19151, 19156, 21214]
   all_state = {}
+  init_state = None
   miro = None
 
   def __init__(self, args):
     self.model_path = args.model
+    self.state_path = args.state
     self.strategy = args.strategy
     self.miro = Mirostat()
 
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
     self.pipeline = PIPELINE(self.model, "rwkv_vocab_v20230424")
+    self.n_embd = self.model.w['emb.weight'].shape[1]
+    n_layer = 0
+    keys = list(self.model.w.keys())
+    for x in keys:
+      layer_id = int(x.split('.')[1]) if ('blocks.' in x) else 0
+      n_layer = max(n_layer, layer_id+1)
+    self.n_layer = n_layer
+    if self.state_path:
+      self.load_state()
     for i in self.AVOID_REPEAT:
       dd = self.pipeline.encode(i)
       assert len(dd) == 1
       self.AVOID_REPEAT_TOKENS += dd
+  
+  def load_state(self):
+    state_raw = torch.load(f'{self.state_path}.pth')
+    init_state = [None] * self.n_layer * 3
+    for i in range(self.n_layer):
+      dd = self.model.strategy[i]
+      dev = dd.device
+      atype = dd.atype    
+      init_state[i*3+0] = torch.zeros(self.n_embd, dtype=atype, requires_grad=False, device=dev).contiguous()
+      init_state[i*3+1] = state_raw[f'blocks.{i}.att.time_state'].transpose(1,2).to(dtype=torch.float, device=dev).requires_grad_(False).contiguous()
+      init_state[i*3+2] = torch.zeros(self.n_embd, dtype=atype, requires_grad=False, device=dev).contiguous()
+    self.init_state = init_state
 
   def run_rnn(self, model_tokens, model_state, tokens):
     tokens = [int(x) for x in tokens]

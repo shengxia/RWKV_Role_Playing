@@ -92,6 +92,8 @@ class UI:
         os.remove(save_file)
     chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
+    if chatbot == False:
+      raise gr.Error('存档与模型不匹配')
     char_list = self.__get_json_files(self.char_path)
     return_arr = (
       gr.Dropdown(choices=char_list),
@@ -121,6 +123,8 @@ class UI:
           char[key] = ''
     chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
+    if chatbot == False:
+      raise gr.Error('存档与模型不匹配')
     return_arr = (
       file_name,
       char['user'], 
@@ -143,7 +147,10 @@ class UI:
     return return_arr
 
   def __load_save(self, file_name):
-    return (self.chat_model.load_state(file_name),)
+    chat_str = self.chat_model.load_state(file_name)
+    if not chat_str:
+      raise gr.Error('存档与模型不匹配')
+    return (chat_str,)
 
   def __save_save(self, bot, file_name):
     if file_name == '':

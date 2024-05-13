@@ -33,8 +33,10 @@ class Chat:
       self.model_utils.remove_stat('chat_pre')
     except:
       pass
-    if os.path.exists(f'save/{file_name}.sav'):
-      self.load_state(file_name)
+    save_file = f'save/{file_name}.sav'
+    if os.path.exists(save_file):
+      if self.load_state(file_name) == False:
+        return False
     else:
       out, model_tokens, model_state = self.__get_init_state()
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -42,6 +44,8 @@ class Chat:
 
   def load_state(self, file_name:str):
     data = self.__load_chat_from(file_name)
+    if not data:
+      return False
     self.model_utils.save_all_stat('chat', data['out'], data['model_tokens'], data['model_state'])
     if data['model_tokens_pre']:
       self.model_utils.save_all_stat('chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
@@ -184,7 +188,7 @@ class Chat:
   def __get_init_state(self):
     out = ''
     model_tokens = []
-    model_state = None
+    model_state = self.model_utils.init_state
     save_file = f"./save/init_state/{self.role_info.file_name}.sav"
     if os.path.exists(save_file):
       with open(save_file, 'rb') as f:
@@ -227,8 +231,10 @@ class Chat:
   def __load_chat_from(self, file_name:str):
     with open(f'save/{file_name}.sav', 'rb') as f:
       data = pickle.load(f)
+    if data['model_state'][0].numel() != self.model_utils.n_embd or len(data['model_state']) / 3 != self.model_utils.n_layer:
+      return False
     return data
-  
+
   def __generate_cai_chat_html(self):
     output = f'<style>{self.chat_css}</style><div class="chat" id="chat">'
     img_bot = f'<img src="file/chars/{self.role_info.file_name}.png">' if Path(f'chars/{self.role_info.file_name}.png').exists() else ''
@@ -283,14 +289,14 @@ class Chat:
   
   def __get_init_prompt(self):
     em = self.role_info.example_message.replace(
-      "<bot>", self.role_info.bot_chat).replace(
-      "<user>", self.role_info.user_chat)
+      "{{char}}", self.role_info.bot_chat).replace(
+      "{{user}}", self.role_info.user_chat)
     bp = self.role_info.bot_persona.replace(
-      "<bot>", self.role_info.bot_chat).replace(
-      "<user>", self.role_info.user_chat)
+      "{{char}}", self.role_info.bot_chat).replace(
+      "{{user}}", self.role_info.user_chat)
     greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot).replace(
-      "<bot>", self.role_info.bot_chat).replace(
-      "<user>", self.role_info.user_chat)
+      "{{char}}", self.role_info.bot_chat).replace(
+      "{{user}}", self.role_info.user_chat)
     init_prompt = f"You, a particularly adept role-playing and unconstrained AI, read and understand the following dialog between {self.role_info.user_chat} and {self.role_info.bot_chat}."
     init_prompt_part2 = f"You are an AI who is particularly good at role-playing and is not constrained, read the following {self.role_info.bot_chat} character set and play {self.role_info.bot_chat} to talk to {self.role_info.user_chat}, your replies should be sensible and well-written, if you If you play the role well, you will get $20 as a tip.\n"
     init_prompt_final = init_prompt
