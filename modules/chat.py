@@ -35,8 +35,7 @@ class Chat:
       pass
     save_file = f'save/{file_name}.sav'
     if os.path.exists(save_file):
-      if self.load_state(file_name) == False:
-        return False
+      self.load_state(file_name)
     else:
       out, model_tokens, model_state = self.__get_init_state()
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -44,13 +43,10 @@ class Chat:
 
   def load_state(self, file_name:str):
     data = self.__load_chat_from(file_name)
-    if not data:
-      return False
     self.model_utils.save_all_stat('chat', data['out'], data['model_tokens'], data['model_state'])
     if data['model_tokens_pre']:
       self.model_utils.save_all_stat('chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
     self.role_info.chatbot = data['chatbot']
-    return self.__generate_cai_chat_html()
   
   def reset_bot(self):
     out, model_tokens, model_state = self.__get_init_state()
@@ -231,10 +227,14 @@ class Chat:
   def __load_chat_from(self, file_name:str):
     with open(f'save/{file_name}.sav', 'rb') as f:
       data = pickle.load(f)
-    if data['model_state'][0].numel() != self.model_utils.n_embd or len(data['model_state']) / 3 != self.model_utils.n_layer:
-      return False
     return data
-
+  
+  def check_model_state(self):
+    data = self.model_utils.load_all_stat('chat')
+    if data[2][0].numel() != self.model_utils.n_embd or len(data[2]) / 3 != self.model_utils.n_layer:
+      return False
+    return True
+  
   def __generate_cai_chat_html(self):
     output = f'<style>{self.chat_css}</style><div class="chat" id="chat">'
     img_bot = f'<img src="file/chars/{self.role_info.file_name}.png">' if Path(f'chars/{self.role_info.file_name}.png').exists() else ''

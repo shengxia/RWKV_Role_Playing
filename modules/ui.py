@@ -92,8 +92,6 @@ class UI:
         os.remove(save_file)
     chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
-    if chatbot == False:
-      raise gr.Error('存档与模型不匹配')
     char_list = self.__get_json_files(self.char_path)
     return_arr = (
       gr.Dropdown(choices=char_list),
@@ -123,8 +121,6 @@ class UI:
           char[key] = ''
     chatbot = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
                                                char['example_message'], char['use_qa'])
-    if chatbot == False:
-      raise gr.Error('存档与模型不匹配')
     return_arr = (
       file_name,
       char['user'], 
@@ -145,12 +141,13 @@ class UI:
       gr.Button(interactive=True)
     )
     return return_arr
+  
+  def __check_model_state(self):
+    if not self.chat_model.check_model_state():
+      gr.Warning('模型与存档不匹配，在角色选项卡中，点击保存角色重新载入')
 
   def __load_save(self, file_name):
-    chat_str = self.chat_model.load_state(file_name)
-    if not chat_str:
-      raise gr.Error('存档与模型不匹配')
-    return (chat_str,)
+    return (self.chat_model.load_state(file_name),)
 
   def __save_save(self, bot, file_name):
     if file_name == '':
@@ -334,7 +331,7 @@ class UI:
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
-      load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list)
+      load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list).then(self.__check_model_state)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       refresh_save_btn.click(self.__update_save_list, inputs=[char_dropdown], outputs=[save_dropdown])
       load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
