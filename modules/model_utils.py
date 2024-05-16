@@ -22,6 +22,7 @@ class ModelUtils:
   AVOID_REPEAT_TOKENS = []
   EXEMPT_TOKENS = [11, 34, 41, 42, 43, 45, 47, 59, 64, 575, 578, 579, 580, 581, 6884,
                    10080, 19126, 19133, 19134, 19137, 19151, 19156, 21214]
+  CHAT_LEN = 20
   all_state = {}
   init_state = None
   miro = None
@@ -97,8 +98,6 @@ class ModelUtils:
     occurrence = {}
     self.miro.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
     for i in range(300):
-      if i > 20:
-        out[261] += (i - 20) * 0.01
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
@@ -109,7 +108,7 @@ class ModelUtils:
         if b not in self.EXEMPT_TOKENS:
           out[b] -= chat_param['context_penalty']
       if chat_param['tau']:
-        token = self.miro.choise(out)
+        token = self.miro.choise(out, chat_param['top_p'], chat_param['temperature'])
       else:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       if token not in occurrence:
