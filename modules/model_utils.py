@@ -108,7 +108,7 @@ class ModelUtils:
         if b not in self.EXEMPT_TOKENS:
           out[b] -= chat_param['context_penalty']
       if chat_param['tau']:
-        token = self.miro.choise(out, chat_param['top_p'], chat_param['temperature'])
+        token = self.miro.choise(out, chat_param['top_p'])
       else:
         token = self.pipeline.sample_logits(out, chat_param['temperature'], chat_param['top_p'], chat_param['top_k'])
       if token not in occurrence:
