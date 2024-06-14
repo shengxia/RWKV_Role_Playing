@@ -1,8 +1,10 @@
 {
-  "top_p": 0.65,
   "top_k": 0,
-  "temperature": 2.5,
+  "temperature": 2,
+  "tau": 5,
+  "lr": 0.1,
+  "top_p": 0.1,
   "presence": 0.2,
-  "frequency": 0.2,
-  "context": 3
+  "frequency": 0,
+  "context": 0
 }
