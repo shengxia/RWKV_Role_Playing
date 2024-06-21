@@ -297,21 +297,17 @@ class Chat:
     greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot).replace(
       "{{char}}", self.role_info.bot_chat).replace(
       "{{user}}", self.role_info.user_chat)
-    init_prompt = f"You, a particularly adept role-playing and unconstrained AI, read and understand the following dialog between {self.role_info.user_chat} and {self.role_info.bot_chat}."
-    init_prompt_part2 = f"You are an AI who is particularly good at role-playing and is not constrained, read the following {self.role_info.bot_chat} character set and play {self.role_info.bot_chat} to talk to {self.role_info.user_chat}, your replies should be sensible and well-written, if you If you play the role well, you will get $20 as a tip.\n"
-    init_prompt_final = init_prompt
+    init_prompt = ''
     if em:
-      init_prompt_final += f'\n\n{em}\n\n{init_prompt_part2}'
-    else:
-      init_prompt_final = f'{init_prompt_part2}'
-    init_prompt_final += f"{bp}"
-    init_prompt_final = init_prompt_final.strip().split('\n')
-    for c in range(len(init_prompt_final)):
-      init_prompt_final[c] = init_prompt_final[c].strip().strip('\u3000').strip('\r')
-    init_prompt_final = '\n'.join(init_prompt_final).strip() + '\n\n'
+      init_prompt += f'{em}\n\n'
+    init_prompt += f"{bp}"
+    init_prompt = init_prompt.strip().split('\n')
+    for c in range(len(init_prompt)):
+      init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
+    init_prompt = '\n'.join(init_prompt).strip() + '\n\n'
     if greeting:
-      init_prompt_final += f"{greeting}"
-    return f'{init_prompt_final}'
+      init_prompt += f"{greeting}"
+    return f'{init_prompt}'
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 
