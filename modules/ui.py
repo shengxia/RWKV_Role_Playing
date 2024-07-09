@@ -56,17 +56,14 @@ class UI:
     return save_list
   
   # 保存角色扮演模式的配置
-  def __save_config(self, top_k=0, temperature=2, tau=3, lr=0.1, top_p=0.65, presence_penalty=0.2, frequency_penalty=0.2, context_penalty=3):
+  def __save_config(self, tau=3, lr=0.1, min_p=0.05, temperature=1.2, presence_penalty=0.2):
     with open(self.config_path, 'w', encoding='utf8') as f:
       config = {
-        'top_k': top_k, 
-        'temperature': temperature, 
         'tau': tau,
         'lr': lr,
-        'top_p': top_p, 
-        'presence': presence_penalty,
-        'frequency': frequency_penalty,
-        'context': context_penalty
+        'min_p': min_p, 
+        'temperature': temperature, 
+        'presence': presence_penalty
       }
       json.dump(config, f, indent=2)
   
@@ -176,10 +173,8 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, 
-                     context_penalty, replace_message):
-    text, chatbot = self.chat_model.on_message(message, top_k, temperature, tau, lr, top_p, presence_penalty, 
-                                               frequency_penalty, context_penalty, replace_message)
+  def __send_message(self, message, tau, lr, min_p, temperature, presence_penalty, replace_message):
+    text, chatbot = self.chat_model.on_message(message, tau, lr, min_p, temperature, presence_penalty, replace_message)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -227,19 +222,16 @@ class UI:
     with open(self.config_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
-    config_items = ['top_k', 'temperature', 'tau', 'lr', 'top_p', 'presence', 'frequency', 'context']
+    config_items = ['tau', 'lr', 'min_p', 'temperature', 'presence']
     for item in config_items:
       if item not in configs_role:
         configs_role[item] = 0
     return_arr = (
-      configs_role['top_k'], 
-      configs_role['temperature'], 
       configs_role['tau'], 
       configs_role['lr'], 
-      configs_role['top_p'], 
-      configs_role['presence'], 
-      configs_role['frequency'], 
-      configs_role['context'],
+      configs_role['min_p'], 
+      configs_role['temperature'], 
+      configs_role['presence'],
       gr.Dropdown(choices=char_list)
     )
     return return_arr
@@ -297,17 +289,11 @@ class UI:
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
-              gr.Markdown('Nucleus取样选项')
-              top_k = gr.Slider(minimum=0, maximum=300, step=1, label='Top K')
-              gr.Markdown('Mirostat V2取样选项')
               tau = gr.Slider(minimum=0, maximum=10, step=0.1, label='TAU')
               lr = gr.Slider(minimum=0, maximum=1, step=0.01, label='Learning Rate')
-              gr.Markdown('通用选项')
-              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+              min_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Min P')
               temperature = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='Temperature')
-              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='存在惩罚')
-              frequency_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='频率惩罚')
-              context_penalty = gr.Slider(minimum=0, maximum=10.0, step=0.1, label='上下文惩罚')
+              presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
               with gr.Row():
                 with gr.Column():
                   save_conf = gr.Button(self.language_conf['SAVE_CFG'])
@@ -326,7 +312,7 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty]
+      input_list = [message, tau, lr, min_p, temperature, presence_penalty]
       output_list = [message, chatbot]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -355,14 +341,11 @@ class UI:
       test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       reload_list = [
-        top_k, 
-        temperature, 
         tau,
         lr,
-        top_p,
+        min_p,
+        temperature, 
         presence_penalty, 
-        frequency_penalty, 
-        context_penalty,
         char_dropdown
       ]
       app.load(self.__init_ui, outputs=reload_list)

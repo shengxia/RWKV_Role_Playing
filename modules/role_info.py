@@ -1,3 +1,5 @@
+import re
+
 class RoleInfo:
 
   def __init__(self, file_name, chatbot, user, bot, greeting, bot_persona, example_message, use_qa, log_hash):
@@ -36,7 +38,7 @@ class RoleInfo:
     return bot
   
   def is_user(self,msg:str)->bool:
-    return msg.startswith("{{user}}") or msg.startswith(self.user_chat)
+    return msg.startswith("{{user}}:") or msg.startswith(f"{self.user_chat}:")
 
   def remove_qa_prefix(self,msg:str)->str:
     return (msg.
@@ -48,5 +50,10 @@ class RoleInfo:
             removeprefix(f"{self.user_chat}:").
             strip().
             replace("{{user}}", self.user_chat).
-            replace("{{char}}", self.bot_chat)
+            replace("{{char}}", self.get_pure_char_name())
             )
+  
+  def get_pure_char_name(self):
+    pattern = re.compile(r'-(.*)')
+    char_name = re.sub(pattern, '', self.bot_chat)
+    return char_name

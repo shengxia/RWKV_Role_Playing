@@ -2,8 +2,6 @@ from modules.model_utils import ModelUtils
 from modules.role_info import RoleInfo
 from pathlib import Path
 import os, json, pickle, copy, re, uuid
-import difflib
-import jieba
 
 class Chat:
   
@@ -66,7 +64,7 @@ class Chat:
     self.chunked_index = None
     return None, self.__generate_cai_chat_html()
 
-  def regen_msg(self, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty):
+  def regen_msg(self, tau, lr, min_p, temperature, presence_penalty):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -74,24 +72,19 @@ class Chat:
     except:
       return '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]
-    new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
+    if user_msg:
+      new = f'{self.role_info.user}: {user_msg}\n\n{self.role_info.bot}:'
+    else:
+      new = f'{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(
-      top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty
-    )
-    ban_token = []
-    if context_penalty:
-      ban_token = self.__check_history_similarity()
-    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token) 
+    chat_param = self.model_utils.format_chat_param(tau, lr, min_p, temperature, presence_penalty)
+    reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state) 
     return '', reply_text
   
-  def on_message(self, message, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, 
-                 context_penalty, replace_message):
+  def on_message(self, message, tau, lr, min_p, temperature, presence_penalty, replace_message):
     if self.chunked_index:
       self.__flush_chat()
     msg = message.strip().replace('\r\n','\n') if message else ''
-    if not msg:
-      return '', self.__generate_cai_chat_html()
     if replace_message:
       try:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
@@ -106,35 +99,32 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
-      new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
+      if msg:
+        new = f"{self.role_info.user}: {msg}\n\n{self.role_info.bot}:"
+      else:
+        new = f"{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-      ban_token = []
-      if context_penalty and len(self.role_info.chatbot) >= 2:
-        ban_token = self.__check_history_similarity()
       self.role_info.chatbot += [[msg, None]]
-      chat_param = self.model_utils.format_chat_param(
-        top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty
-      )
-      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state, ban_token)
+      chat_param = self.model_utils.format_chat_param(tau, lr, min_p, temperature, presence_penalty)
+      reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state)
       self.ban_tokens = []
       return '', reply_text
     
-  def __gen_msg(self, out, chat_param, model_tokens, model_state, ban_token):
-    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param, ban_token)
+  def __gen_msg(self, out, chat_param, model_tokens, model_state):
+    new_reply, out, model_tokens, model_state = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     self.role_info.chatbot[-1][1] = new_reply
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
     self.__save_log()
     self.__save_chat()
     return self.__generate_cai_chat_html()
     
-  def get_prompt(self, top_k, temperature, tau, lr, top_p, presence_penalty, frequency_penalty, context_penalty):
+  def get_prompt(self, tau, lr, min_p, temperature, presence_penalty):
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
     new = f"{self.role_info.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(top_k, temperature, tau, lr, top_p, presence_penalty, 
-                                                    frequency_penalty, context_penalty)
+    chat_param = self.model_utils.format_chat_param(tau, lr, min_p, temperature, presence_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     return new_prompt[0]
   
@@ -288,15 +278,14 @@ class Chat:
     return chat_str
   
   def __get_init_prompt(self):
+    bot_name = self.role_info.get_pure_char_name()
     em = self.role_info.example_message.replace(
-      "{{char}}", self.role_info.bot_chat).replace(
+      "{{char}}", bot_name).replace(
       "{{user}}", self.role_info.user_chat)
     bp = self.role_info.bot_persona.replace(
-      "{{char}}", self.role_info.bot_chat).replace(
+      "{{char}}", bot_name).replace(
       "{{user}}", self.role_info.user_chat)
-    greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot).replace(
-      "{{char}}", self.role_info.bot_chat).replace(
-      "{{user}}", self.role_info.user_chat)
+    greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot)
     init_prompt = ''
     if em:
       init_prompt += f'{em}\n\n'
@@ -351,40 +340,3 @@ class Chat:
     text3 = re.sub(pattern3, r'<em>\1</em>', text2)
     text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
     return text4
-  
-  def __is_Chinese(self, text):
-    # 暂时设定非英文就是中文
-    return not bool(re.match(r'^[A-Za-z0-9,:#\$\.\!\?\*\(\)\'\" ]+$', text, flags=re.MULTILINE))
-  
-  def __get_repeat_text(self, sentence1, sentence2, is_Chinese):
-    gate = 4
-    matcher = difflib.SequenceMatcher(None, sentence1, sentence2)
-    match_block = matcher.get_matching_blocks()
-    result = []
-    for m in match_block:
-      raw_str = sentence1[m.a:m.a + m.size].strip()
-      if not raw_str:
-        continue
-      repeat_length = len(raw_str)
-      if not is_Chinese:
-        lst = jieba.lcut(raw_str)
-        lst = [item for item in lst if item != ' ']
-        repeat_length = len(lst)
-      if repeat_length > gate:
-        if not is_Chinese:
-          repeat_str = raw_str.replace(self.role_info.bot_chat, '').replace(self.role_info.user_chat, '')
-        else:
-          repeat_str = raw_str.replace(self.role_info.bot_chat, '').replace(self.role_info.user_chat, '')
-        repeat_arr = self.model_utils.pipeline.encode(repeat_str)
-        result += repeat_arr
-    return result
-  
-  # 比较最近一次生成的话在最近五次生成的话之间有没有重复的地方。
-  def __check_history_similarity(self):
-    sentence1 = ' ' + self.role_info.chatbot[-1][1]
-    sentences = self.role_info.chatbot[-10:-1]
-    is_Chinese = self.__is_Chinese(sentence1)
-    ban_token = []
-    for sentence2 in sentences:
-      ban_token += self.__get_repeat_text(sentence1, ' ' + sentence2[1], is_Chinese)
-    return list(set(ban_token))
