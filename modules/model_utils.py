@@ -6,7 +6,8 @@ torch.backends.cuda.matmul.allow_tf32 = True
 from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
 import gc
-from modules.mirostat import Mirostat
+from modules.sampler import Sampler
+import matplotlib.pyplot as plt
 
 class ModelUtils:
 
@@ -22,13 +23,13 @@ class ModelUtils:
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   init_state = None
-  miro = None
+  sampler = None
 
   def __init__(self, args):
     self.model_path = args.model
     self.state_path = args.state
     self.strategy = args.strategy
-    self.miro = Mirostat()
+    self.sampler = Sampler()
 
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
@@ -93,14 +94,19 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     occurrence = {}
-    self.miro.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
+    self.sampler.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
+    # data1 = []
+    # data2 = []
+    # x = []
     for i in range(300):
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
-      token = self.miro.choise(out, chat_param['min_p'], chat_param['temperature'])
+      result = self.sampler.choise(out, chat_param['min_p'], chat_param['min_temp'], 
+                                chat_param['max_temp'], chat_param['dynatemp_exponent'])
+      token = result[0]
       if token not in occurrence:
         occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
@@ -109,17 +115,23 @@ class ModelUtils:
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
+      # data1.append(result[1])
+      # data2.append(result[2])
+      # x.append(i)
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
+    # self.draw_pic(data1, data2, x)
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, tau, lr, min_p, temperature, presence_penalty):
+  def format_chat_param(self, tau, lr, min_p, min_temp, max_temp, dynatemp_exponent, presence_penalty):
     chat_param = {
       'tau': tau,
       'lr': lr,
       'min_p': min_p,
-      'temperature': temperature,
+      'min_temp': min_temp,
+      'max_temp': max_temp,
+      'dynatemp_exponent': dynatemp_exponent,
       'presence_penalty': presence_penalty
     }
     return chat_param
@@ -127,4 +139,10 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
-  
+
+  def draw_pic(self, data1, data2, x):
+    plt.figure()
+    plt.plot(x, data1, color='blue', linestyle='-')
+    plt.plot(x, data2, color='red', linestyle='--')
+    plt.legend(['observed surprise', 'dynamic temperature'], loc='upper left')
+    plt.savefig('myplot.png')

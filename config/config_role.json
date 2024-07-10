@@ -1,7 +1,9 @@
 {
-  "tau": 3,
+  "tau": 8,
   "lr": 0.1,
   "min_p": 0.05,
-  "temperature": 1.5,
+  "min_temp": 0.1,
+  "max_temp": 2,
+  "dynatemp_exponent": 1,
   "presence": 0.2
 }
