@@ -1,8 +1,9 @@
 {
-  "top_p": 0.65,
-  "top_k": 0,
-  "temperature": 2.5,
-  "presence": 0.2,
-  "frequency": 0.2,
-  "context": 3
+  "tau": 3,
+  "lr": 0.1,
+  "min_p": 0.05,
+  "min_temp": 1,
+  "max_temp": 2,
+  "dynatemp_exponent": 1,
+  "presence": 0.2
 }
