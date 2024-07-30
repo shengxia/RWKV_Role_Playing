@@ -12,7 +12,9 @@ class Sampler(object):
     self.max_surprise = max_surprise
     self.rate = rate
 
-  def choise(self, out: Tensor, min_p, min_temp, max_temp, dynatemp_exponent) -> int:
+  def choise(self, out: Tensor, min_p, min_temp, max_temp, dynatemp_exponent):
+    if self.tau == 0:
+      return (int(sorted_indices[0]), 0, 0)
     sorted_logits, sorted_indices = torch.sort(out, descending=True)
     prob_original = torch.softmax(sorted_logits, dim=-1).tolist()
     # Mirostat v2
@@ -43,4 +45,4 @@ class Sampler(object):
     observed_surprise = -math.log2(prob_original[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
-    return (int(prev[0]), observed_surprise, dyn_temp.item())
+    return (int(prev[0]), self.max_surprise, dyn_temp.item())

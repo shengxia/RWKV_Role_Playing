@@ -322,7 +322,7 @@ class Chat:
     out, model_tokens, model_state = self.__get_init_state()
     chat_str = ''
     chat_str_pre = ''
-    for row in reversed(self.role_info.chatbot[:-1]):
+    for row in reversed(self.role_info.chatbot[len(self.role_info.greeting_chatbot):-1]):
       if len(chat_str_pre) > 400:
         break
       chat_str_pre = f'{self.role_info.bot}: {row[1]}\n\n' + chat_str_pre

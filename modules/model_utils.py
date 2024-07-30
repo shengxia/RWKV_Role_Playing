@@ -20,7 +20,7 @@ class ModelUtils:
   END_OF_TEXT = 0
   NEG_INF = -999999999
   AVOID_REPEAT = '，：？！'
-  AVOID_REPEAT_TOKENS = []
+  AVOID_REPEAT_TOKENS = [11, 261, 43, 277, 23244, 19133, 19134]
   all_state = {}
   init_state = None
   sampler = None
@@ -93,12 +93,16 @@ class ModelUtils:
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    occurrence = {}
-    self.sampler.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
+    max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
+    self.sampler.set_param(chat_param['tau'], chat_param['lr'], max_suprise)
     # data1 = []
     # data2 = []
     # x = []
     for i in range(300):
+      occurrence = {}
+      for t in model_tokens[-300:]:
+        if t not in occurrence and t not in self.AVOID_REPEAT_TOKENS:
+          occurrence[t] = 1
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
@@ -107,8 +111,6 @@ class ModelUtils:
       result = self.sampler.choise(out, chat_param['min_p'], chat_param['min_temp'], 
                                 chat_param['max_temp'], chat_param['dynatemp_exponent'])
       token = result[0]
-      if token not in occurrence:
-        occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
@@ -116,7 +118,7 @@ class ModelUtils:
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
       # data1.append(result[1])
-      # data2.append(result[2])
+      # data2.append(result[2] * 10)
       # x.append(i)
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
