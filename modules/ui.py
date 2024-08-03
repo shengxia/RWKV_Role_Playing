@@ -301,7 +301,7 @@ class UI:
               min_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Min P')
               min_temp = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='动态温度最小值')
               max_temp = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='动态温度最大值')
-              dynatemp_exponent = gr.Slider(minimum=0.1, maximum=3.0, step=0.01, label='动态温度指数')
+              dynatemp_exponent = gr.Slider(minimum=0, maximum=3.0, step=0.01, label='动态温度指数')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
               with gr.Row():
                 with gr.Column():

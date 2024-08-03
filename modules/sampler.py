@@ -13,9 +13,9 @@ class Sampler(object):
     self.rate = rate
 
   def choise(self, out: Tensor, min_p, min_temp, max_temp, dynatemp_exponent):
+    sorted_logits, sorted_indices = torch.sort(out, descending=True)
     if self.tau == 0:
       return (int(sorted_indices[0]), 0, 0)
-    sorted_logits, sorted_indices = torch.sort(out, descending=True)
     prob_original = torch.softmax(sorted_logits, dim=-1).tolist()
     # Mirostat v2
     for i, candidate in enumerate(prob_original):
@@ -28,11 +28,13 @@ class Sampler(object):
     prob_topk = torch.softmax(sorted_logits, dim=-1)
     # min p
     if min_p > 0 and min_p < 1:
-      prob_topk[prob_topk < prob_topk[0].item() * min_p] = 0
+      prob_topk = prob_topk[prob_topk >= prob_topk[0].item() * min_p]
+      sorted_logits = sorted_logits[:prob_topk.numel()]
     # 动态temperature
     dyn_temp = torch.tensor(0)
     if dynatemp_exponent > 0:
-      entropy = -1.0 * torch.where(prob_topk > 0, prob_topk * torch.log2(prob_topk), torch.zeros_like(prob_topk)).sum()
+      prob_temp = torch.softmax(sorted_logits, dim=-1)
+      entropy = -1.0 * torch.where(prob_temp > 0, prob_temp * torch.log2(prob_temp), torch.zeros_like(prob_temp)).sum()
       entropy = max(entropy, torch.tensor(1e-10))
       num_valid_tokens = torch.sum(sorted_logits > -float('inf')).item()
       max_entropy = math.log2(num_valid_tokens)
