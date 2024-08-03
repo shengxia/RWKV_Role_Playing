@@ -47,4 +47,5 @@ class Sampler(object):
     observed_surprise = -math.log2(prob_original[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
+    self.rate = self.rate / 1.01
     return (int(prev[0]), self.max_surprise, dyn_temp.item())
