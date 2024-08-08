@@ -1,9 +1,10 @@
 {
   "tau": 3,
-  "lr": 0.1,
+  "lr": 0.3,
+  "lr_decay": 0.01,
   "min_p": 0.05,
   "min_temp": 1,
   "max_temp": 2,
   "dynatemp_exponent": 1,
-  "presence": 0.2
+  "presence": 0.1
 }

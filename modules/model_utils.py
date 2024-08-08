@@ -19,7 +19,7 @@ class ModelUtils:
   CHUNK_LEN = 100
   END_OF_TEXT = 0
   NEG_INF = -999999999
-  AVOID_REPEAT = '，：？！'
+  AVOID_REPEAT = '，。：？！'
   AVOID_REPEAT_TOKENS = [11, 261, 43, 277, 23244, 19133, 19134]
   all_state = {}
   init_state = None
@@ -94,7 +94,7 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
-    self.sampler.set_param(chat_param['tau'], chat_param['lr'], max_suprise)
+    self.sampler.set_param(chat_param['tau'], chat_param['lr'], chat_param['lr_decay'], max_suprise)
     # data1 = []
     # data2 = []
     # x = []
@@ -118,7 +118,7 @@ class ModelUtils:
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
       # data1.append(result[1])
-      # data2.append(result[2] * 10)
+      # data2.append(result[2])
       # x.append(i)
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
@@ -126,10 +126,12 @@ class ModelUtils:
     # self.draw_pic(data1, data2, x)
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, tau, lr, min_p, min_temp, max_temp, dynatemp_exponent, presence_penalty):
+  def format_chat_param(self, tau, lr, lr_decay, min_p, min_temp, max_temp, dynatemp_exponent, 
+                        presence_penalty):
     chat_param = {
       'tau': tau,
       'lr': lr,
+      'lr_decay': lr_decay,
       'min_p': min_p,
       'min_temp': min_temp,
       'max_temp': max_temp,
@@ -146,5 +148,5 @@ class ModelUtils:
     plt.figure()
     plt.plot(x, data1, color='blue', linestyle='-')
     plt.plot(x, data2, color='red', linestyle='--')
-    plt.legend(['observed surprise', 'dynamic temperature'], loc='upper left')
+    plt.legend(['max surprise', 'temp'], loc='upper left')
     plt.savefig('myplot.png')
