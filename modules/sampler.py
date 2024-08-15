@@ -1,6 +1,7 @@
 import math
 import torch
 from torch import Tensor
+import numpy as np
 
 class Sampler(object):
 
@@ -13,10 +14,8 @@ class Sampler(object):
     self.rate = rate
     self.lr_decay = lr_decay
 
-  def choise(self, out: Tensor, min_p, min_temp, max_temp, dynatemp_exponent):
+  def choise(self, out: Tensor, top_p, temp):
     sorted_logits, sorted_indices = torch.sort(out, descending=True)
-    if self.tau == 0:
-      return (int(sorted_indices[0]), 0, 0)
     prob_original = torch.softmax(sorted_logits, dim=-1).tolist()
     # Mirostat v2
     for i, candidate in enumerate(prob_original):
@@ -27,26 +26,18 @@ class Sampler(object):
           sorted_logits = sorted_logits[:i]
         break
     prob_topk = torch.softmax(sorted_logits, dim=-1)
-    # min p
-    if min_p > 0 and min_p < 1:
-      prob_topk = prob_topk[prob_topk >= prob_topk[0].item() * min_p]
-      sorted_logits = sorted_logits[:prob_topk.numel()]
-    # 动态temperature
-    dyn_temp = torch.tensor(0)
-    if dynatemp_exponent > 0:
-      prob_temp = torch.softmax(sorted_logits, dim=-1)
-      entropy = -1.0 * torch.where(prob_temp > 0, prob_temp * torch.log2(prob_temp), torch.zeros_like(prob_temp)).sum()
-      entropy = max(entropy, torch.tensor(1e-10))
-      num_valid_tokens = torch.sum(sorted_logits > -float('inf')).item()
-      max_entropy = math.log2(num_valid_tokens)
-      max_entropy = max_entropy if max_entropy > 0.0 else 1e-10
-      normalized_entropy = entropy / max_entropy  
-      dyn_temp = min_temp + (max_temp - min_temp) * (normalized_entropy.pow(dynatemp_exponent))
-      prob_topk = prob_topk ** (1 / dyn_temp)
+    # top p
+    if top_p > 0 and top_p < 1:
+      cumulative_probs = torch.cumsum(prob_topk, dim=-1).cpu().numpy()
+      cutoff = float(prob_topk[np.argmax(cumulative_probs >= top_p)])
+      prob_topk = prob_topk[prob_topk >= cutoff]
+    # temperature
+    if temp != 1:
+      prob_topk = prob_topk ** (1 / temp)
     prev_i = torch.multinomial(prob_topk, num_samples=1, replacement=True)
     prev = sorted_indices[prev_i]
     observed_surprise = -math.log2(prob_original[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
     self.rate = self.rate / (1 + self.lr_decay)
-    return (int(prev[0]), self.max_surprise, dyn_temp.item())
+    return int(prev[0])
