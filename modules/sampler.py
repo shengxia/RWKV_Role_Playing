@@ -42,5 +42,6 @@ class Sampler(object):
     observed_surprise = -math.log2(prob_original[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
-    self.rate = self.rate / (1 + self.lr_decay)
+    if self.max_surprise > 10 * self.tau:
+      self.rate = self.rate / (1 + self.lr_decay)
     return int(prev[0])

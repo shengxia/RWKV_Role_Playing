@@ -20,6 +20,7 @@ class ModelUtils:
   NEG_INF = -999999999
   AVOID_REPEAT = '，。：？！'
   AVOID_REPEAT_TOKENS = []
+  EXEMPT_TOKENS = [11, 261, 43, 277, 23244, 19133, 19134]
   all_state = {}
   init_state = None
   sampler = None
@@ -46,6 +47,7 @@ class ModelUtils:
       dd = self.pipeline.encode(i)
       assert len(dd) == 1
       self.AVOID_REPEAT_TOKENS += dd
+      self.EXEMPT_TOKENS += dd
   
   def load_state(self):
     state_raw = torch.load(f'{self.state_path}.pth')
@@ -95,9 +97,11 @@ class ModelUtils:
     if chat_param['tau'] > 0:
       max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
       self.sampler.set_param(chat_param['tau'], chat_param['lr'], chat_param['lr_decay'], max_suprise)
-    occurrence = {}
-    print('=' * 30)
     for i in range(300):
+      occurrence = {}
+      for t in model_tokens[-300:]:
+        if t not in occurrence and t not in self.EXEMPT_TOKENS:
+          occurrence[t] = 1
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
@@ -105,20 +109,10 @@ class ModelUtils:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
       temp = chat_param['temp']
       if chat_param['tau'] > 0:
-        k = 0
-        if i == 0:
-          out[261] = self.NEG_INF
-          temp = 1000
-          k = 4
-        if i == 1:
-          out[261] = self.NEG_INF
-          temp = 1000
-          k = 20
+        k, temp, out = self.get_special_param(i, temp, out)  
         token = self.sampler.choise(out, chat_param['top_p'], temp, k)
       else:
         token = self.pipeline.sample_logits(out, temp, chat_param['top_p'])
-      if token not in occurrence:
-        occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
@@ -127,7 +121,6 @@ class ModelUtils:
       send_msg = self.pipeline.decode(model_tokens[begin:])
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
-        print(f'max_suprise: {self.sampler.max_surprise}')
         break
     return send_msg, out, model_tokens, model_state
   
@@ -141,6 +134,15 @@ class ModelUtils:
       'presence_penalty': presence_penalty
     }
     return chat_param
+  
+  def get_special_param(self, i, temp, out):
+    k = 0
+    if i == 1:
+      k = 40
+      temp = 1000
+    if k:
+      out[261] = self.NEG_INF
+    return k, temp, out
   
   def clear_cache(self):
     gc.collect()
