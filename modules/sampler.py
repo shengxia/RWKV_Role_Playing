@@ -14,7 +14,7 @@ class Sampler(object):
     self.rate = rate
     self.lr_decay = lr_decay
 
-  def choise(self, out: Tensor, top_p, temp, k = 0):
+  def choise(self, out: Tensor, min_p, temp, k = 0):
     sorted_logits, sorted_indices = torch.sort(out, descending=True)
     prob_original = torch.softmax(sorted_logits, dim=-1).tolist()
     if k:
@@ -29,11 +29,9 @@ class Sampler(object):
             sorted_logits = sorted_logits[:i]
           break
     prob_topk = torch.softmax(sorted_logits, dim=-1)
-    # top p
-    if top_p > 0 and top_p < 1 and k == 0:
-      cumulative_probs = torch.cumsum(prob_topk, dim=-1).cpu().numpy()
-      cutoff = float(prob_topk[np.argmax(cumulative_probs >= top_p)])
-      prob_topk = prob_topk[prob_topk >= cutoff]
+    # min p
+    if min_p > 0 and min_p < 1 and k == 0:
+      prob_topk = prob_topk[prob_topk >= prob_topk[0].item() * min_p]
     # temperature
     if temp != 1:
       prob_topk = prob_topk ** (1 / temp)

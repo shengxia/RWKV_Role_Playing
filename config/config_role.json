@@ -2,7 +2,7 @@
   "tau": 5,
   "lr": 0.1,
   "lr_decay": 0.01,
-  "top_p": 0.6,
-  "temp": 2,
-  "presence": 0.1
+  "min_p": 0.05,
+  "temp": 1.5,
+  "presence": 0.2
 }

@@ -56,13 +56,13 @@ class UI:
     return save_list
   
   # 保存角色扮演模式的配置
-  def __save_config(self, tau=3, lr=0.1, lr_decay=0.01, top_p=0.05, temp=1, presence_penalty=0.2):
+  def __save_config(self, tau=3, lr=0.1, lr_decay=0.01, min_p=0.05, temp=1, presence_penalty=0.2):
     with open(self.config_path, 'w', encoding='utf8') as f:
       config = {
         'tau': tau,
         'lr': lr,
         'lr_decay': lr_decay,
-        'top_p': top_p, 
+        'min_p': min_p, 
         'temp': temp, 
         'presence': presence_penalty
       }
@@ -174,8 +174,8 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, tau, lr, lr_decay, top_p, temp, presence_penalty, replace_message):
-    text, chatbot = self.chat_model.on_message(message, tau, lr, lr_decay, top_p, temp, presence_penalty, 
+  def __send_message(self, message, tau, lr, lr_decay, min_p, temp, presence_penalty, replace_message):
+    text, chatbot = self.chat_model.on_message(message, tau, lr, lr_decay, min_p, temp, presence_penalty, 
                                                replace_message)
     show_label = False
     interactive = True
@@ -224,7 +224,7 @@ class UI:
     with open(self.config_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
-    config_items = ['tau', 'lr', 'lr_decay', 'top_p', 'temp', 'presence']
+    config_items = ['tau', 'lr', 'lr_decay', 'min_p', 'temp', 'presence']
     for item in config_items:
       if item not in configs_role:
         configs_role[item] = 0
@@ -232,7 +232,7 @@ class UI:
       configs_role['tau'], 
       configs_role['lr'], 
       configs_role['lr_decay'], 
-      configs_role['top_p'], 
+      configs_role['min_p'], 
       configs_role['temp'], 
       configs_role['presence'],
       gr.Dropdown(choices=char_list)
@@ -295,7 +295,7 @@ class UI:
               tau = gr.Slider(minimum=0, maximum=10, step=0.1, label='目标熵')
               lr = gr.Slider(minimum=0, maximum=1, step=0.001, label='学习率')
               lr_decay = gr.Slider(minimum=0, maximum=1, step=0.01, label='学习率衰减系数')
-              top_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Top P')
+              min_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Min P')
               temp = gr.Slider(minimum=0.1, maximum=5.0, step=0.01, label='温度值')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
               with gr.Row():
@@ -316,7 +316,7 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, tau, lr, lr_decay, top_p, temp, presence_penalty]
+      input_list = [message, tau, lr, lr_decay, min_p, temp, presence_penalty]
       output_list = [message, chatbot]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
@@ -348,7 +348,7 @@ class UI:
         tau,
         lr,
         lr_decay,
-        top_p,
+        min_p,
         temp,
         presence_penalty, 
         char_dropdown

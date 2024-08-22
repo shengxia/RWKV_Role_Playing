@@ -64,7 +64,7 @@ class Chat:
     self.chunked_index = None
     return None, self.__generate_cai_chat_html()
 
-  def regen_msg(self, tau, lr, lr_decay, top_p, temp, presence_penalty):
+  def regen_msg(self, tau, lr, lr_decay, min_p, temp, presence_penalty):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -77,11 +77,11 @@ class Chat:
     else:
       new = f'{self.role_info.bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, top_p, temp, presence_penalty)
+    chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, min_p, temp, presence_penalty)
     reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state) 
     return '', reply_text
   
-  def on_message(self, message, tau, lr, lr_decay, top_p, temp, presence_penalty, replace_message):
+  def on_message(self, message, tau, lr, lr_decay, min_p, temp, presence_penalty, replace_message):
     if self.chunked_index:
       self.__flush_chat()
     msg = message.strip().replace('\r\n','\n') if message else ''
@@ -105,7 +105,7 @@ class Chat:
         new = f"{self.role_info.bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot += [[msg, None]]
-      chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, top_p, temp, presence_penalty)
+      chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, min_p, temp, presence_penalty)
       reply_text = self.__gen_msg(out, chat_param, model_tokens, model_state)
       self.ban_tokens = []
       return '', reply_text
@@ -118,13 +118,13 @@ class Chat:
     self.__save_chat()
     return self.__generate_cai_chat_html()
     
-  def get_prompt(self, tau, lr, lr_decay, top_p, temp, presence_penalty):
+  def get_prompt(self, tau, lr, lr_decay, min_p, temp, presence_penalty):
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
     new = f"{self.role_info.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, top_p, temp, presence_penalty)
+    chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, min_p, temp, presence_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     return new_prompt[0]
   

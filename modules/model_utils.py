@@ -97,11 +97,8 @@ class ModelUtils:
     if chat_param['tau'] > 0:
       max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
       self.sampler.set_param(chat_param['tau'], chat_param['lr'], chat_param['lr_decay'], max_suprise)
+    occurrence = {}
     for i in range(300):
-      occurrence = {}
-      for t in model_tokens[-300:]:
-        if t not in occurrence and t not in self.EXEMPT_TOKENS:
-          occurrence[t] = 1
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
@@ -110,9 +107,11 @@ class ModelUtils:
       temp = chat_param['temp']
       if chat_param['tau'] > 0:
         k, temp, out = self.get_special_param(i, temp, out)  
-        token = self.sampler.choise(out, chat_param['top_p'], temp, k)
+        token = self.sampler.choise(out, chat_param['min_p'], temp, k)
       else:
-        token = self.pipeline.sample_logits(out, temp, chat_param['top_p'])
+        token = self.pipeline.sample_logits(out, temp, chat_param['min_p'])
+      if token not in occurrence:
+        occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
       out[self.END_OF_TEXT] = self.NEG_INF
       xxx = self.pipeline.decode(model_tokens[out_last:])
@@ -124,12 +123,12 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, tau, lr, lr_decay, top_p, temp, presence_penalty):
+  def format_chat_param(self, tau, lr, lr_decay, min_p, temp, presence_penalty):
     chat_param = {
       'tau': tau,
       'lr': lr,
       'lr_decay': lr_decay,
-      'top_p': top_p,
+      'min_p': min_p,
       'temp': temp,
       'presence_penalty': presence_penalty
     }
