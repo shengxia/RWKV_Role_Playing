@@ -137,7 +137,7 @@ class ModelUtils:
   def get_special_param(self, i, temp, out):
     k = 0
     if i == 1:
-      k = 40
+      k = 20
       temp = 1000
     if k:
       out[261] = self.NEG_INF

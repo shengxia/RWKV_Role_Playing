@@ -3,6 +3,6 @@
   "lr": 0.1,
   "lr_decay": 0.01,
   "min_p": 0.05,
-  "temp": 1.5,
+  "temp": 1,
   "presence": 0.2
 }

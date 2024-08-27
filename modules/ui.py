@@ -128,6 +128,7 @@ class UI:
       char['example_message'],
       char['use_qa'],
       chatbot,
+      char['bot'], 
       self.__update_save_list(file_name),
       gr.Textbox(interactive=True), 
       gr.Textbox(interactive=True), 
@@ -174,9 +175,9 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, tau, lr, lr_decay, min_p, temp, presence_penalty, replace_message):
-    text, chatbot = self.chat_model.on_message(message, tau, lr, lr_decay, min_p, temp, presence_penalty, 
-                                               replace_message)
+  def __send_message(self, message, speak_to, tau, lr, lr_decay, min_p, temp, presence_penalty, replace_message):
+    text, chatbot, speak_to = self.chat_model.on_message(message, speak_to, tau, lr, lr_decay, min_p, temp, 
+                                               presence_penalty, replace_message)
     show_label = False
     interactive = True
     if self.chat_model.check_token_count():
@@ -185,6 +186,7 @@ class UI:
     result = (
       text,
       chatbot,
+      speak_to,
       gr.Textbox(show_label=show_label),
       gr.Button(interactive=interactive), 
       gr.Button(interactive=interactive), 
@@ -209,10 +211,11 @@ class UI:
     return result
 
   def __reset_chatbot(self):
-    message, chatbot = self.chat_model.reset_bot()
+    message, chatbot, speak_to = self.chat_model.reset_bot()
     return_arr = (
       message,
       chatbot,
+      speak_to,
       gr.Button(visible=True),
       gr.Button(visible=False),
       gr.Button(visible=False)
@@ -250,6 +253,7 @@ class UI:
           with gr.Column(scale=3):
             chatbot = gr.HTML(value=f'<style>{self.chat_model.chat_css}</style><div class="chat" id="chat"></div>')
             message = gr.TextArea(lines=2, placeholder=self.language_conf['MSG_PH'], show_label=False, label=self.language_conf['MSG_LB'], interactive=False)
+            speak_to = gr.Textbox(placeholder='希望谁来回复', show_label=False,)
             with gr.Row():
               replace_message = gr.Checkbox(label=self.language_conf['TAMPER'])
             with gr.Row():
@@ -316,24 +320,24 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, tau, lr, lr_decay, min_p, temp, presence_penalty]
-      output_list = [message, chatbot]
+      input_list = [message, speak_to, tau, lr, lr_decay, min_p, temp, presence_penalty]
+      output_list = [message, chatbot, speak_to]
       char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
-      load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [save_dropdown] + interactive_list).then(self.__check_model_state)
+      load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [speak_to, save_dropdown] + interactive_list).then(self.__check_model_state)
       refresh_char_btn.click(self.__update_chars_list, outputs=[char_dropdown])
       refresh_save_btn.click(self.__update_save_list, inputs=[char_dropdown], outputs=[save_dropdown])
-      load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot])
+      load_save_btn.click(self.__load_save, inputs=[save_dropdown], outputs=[chatbot, speak_to])
       save_btn.click(self.__save_save, inputs=[char_dropdown,save_file_name], outputs=[save_dropdown])
       save_update_btn.click(self.__save_update, inputs=[char_dropdown,save_dropdown], outputs=[save_dropdown])
-      save_conf.click(self.__save_config, inputs=input_list[1:])
+      save_conf.click(self.__save_config, inputs=input_list[2:])
       message.submit(self.__send_message, inputs=input_list + [replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       submit.click(self.__send_message, inputs=input_list + [replace_message], outputs=output_list + interactive_list + [replace_message]).then(self.__arrange_token, outputs=interactive_list, show_progress=False)
       regen.click(self.chat_model.regen_msg, inputs=input_list[1:], outputs=output_list)
       save_char_btn.click(self.__save_char, inputs=char_input_list[:-1], outputs=[char_dropdown, chatbot] + interactive_list)
-      clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message])
-      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[1:], outputs=[message])
+      clear_last_btn.click(self.chat_model.clear_last, outputs=[chatbot, message, speak_to])
+      get_prompt_btn.click(self.chat_model.get_prompt, inputs=input_list[2:], outputs=[message])
       clear_chat.click(self.__reset_chatbot, outputs=output_list + [delete, clear_chat, clear_cancel])
       delete.click(self.__confirm_delete, outputs=[delete, clear_chat, clear_cancel])
       clear_cancel.click(self.__confirm_cancel, outputs=[delete, clear_chat, clear_cancel])
