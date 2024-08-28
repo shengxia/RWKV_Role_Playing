@@ -14,9 +14,16 @@ class Sampler(object):
     self.rate = rate
     self.lr_decay = lr_decay
 
-  def choise(self, out: Tensor, min_p, temp, k = 0):
+  def choise(self, out: Tensor, min_p, temp, i):
     sorted_logits, sorted_indices = torch.sort(out, descending=True)
     prob_original = torch.softmax(sorted_logits, dim=-1).tolist()
+    k = 0
+    if i == 0:
+      temp = 1000
+      k = 2
+    elif i == 1:
+      temp = 1000
+      k = 20
     if k:
       sorted_logits = sorted_logits[:k]
     else:
