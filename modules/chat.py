@@ -90,6 +90,12 @@ class Chat:
     if self.role_info.use_qa:
       speak_to = self.role_info.bot
     msg = message.strip().replace('\r\n','\n') if message else ''
+    if msg:
+      msg_arr = msg.split('\n')
+      for i, m in enumerate(msg_arr):
+        if m[0] != '（':
+          msg_arr[i] = f'“{m}”'
+      msg = '\n'.join(msg_arr)
     if replace_message:
       try:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
@@ -140,7 +146,8 @@ class Chat:
       return self.__generate_cai_chat_html(), ''
     self.chunked_index = index
     messages = self.role_info.chatbot.pop()
-    return self.__generate_cai_chat_html(), messages[0]['msg'], messages[1]['char']
+    msg = messages[0]['msg'].replace('“', '').replace('”', '')
+    return self.__generate_cai_chat_html(), msg, messages[1]['char']
   
   def __flush_chat(self):
     chatbot = copy.deepcopy(self.role_info.chatbot)
@@ -285,7 +292,7 @@ class Chat:
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
     for row in chatbot:
-      if row[0]:
+      if row[0] and row[0]['msg']:
         chat_str += f"{row[0]['char']}: {row[0]['msg']}\n\n"
       if row[1]:
         chat_str += f"{row[1]['char']}: {row[1]['msg']}\n\n"
@@ -346,11 +353,11 @@ class Chat:
   
   def __format_chat(self, text):
     pattern1 = re.compile(r'（(.*?)）')
-    pattern2 = re.compile(r'\((.*?)\)')
+    pattern2 = re.compile(r'\"(.*?)\"')
     pattern3 = re.compile(r'\*(.*?)\*')
-    pattern4 = re.compile(r'```(.*?)```')
+    pattern4 = re.compile(r'“(.*?)”')
     text1 = re.sub(pattern1, r'<em>\1</em>', text)
     text2 = re.sub(pattern2, r'<em>\1</em>', text1)
     text3 = re.sub(pattern3, r'<em>\1</em>', text2)
-    text4 = re.sub(pattern4, r'<pre>\1</pre>', text3)
+    text4 = re.sub(pattern4, r'\1', text3)
     return text4

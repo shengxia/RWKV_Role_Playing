@@ -102,13 +102,20 @@ class ModelUtils:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
-      if i < 40:
-        out[261] = self.NEG_INF
-        if self.pipeline.decode(model_tokens[begin:]).endswith('\n'):
-          out[11] = self.NEG_INF
+      now_str = self.pipeline.decode(model_tokens[begin:])
+      if i < 50:
+        if out[261] > 0:
+          out[261] = 0 - out[261]
       temp = chat_param['temp']
       if chat_param['tau'] > 0:
-        token = self.sampler.choise(out, chat_param['min_p'], temp, i)
+        k = 0
+        if i == 0:
+          k = 2
+        elif now_str.endswith('“') or now_str.endswith('（') or now_str.count('"') / 2 != 0 or now_str.count('*') / 2 != 0:
+          k = 10
+        if k:
+          temp = 1000
+        token = self.sampler.choise(out, chat_param['min_p'], temp, k)
       else:
         token = self.pipeline.sample_logits(out, temp, chat_param['min_p'])
       if token not in occurrence:
