@@ -30,11 +30,15 @@ class RoleInfo:
       if self.is_user(current_msg):
         if greetinglist and not self.is_user(greetinglist[0]):
           next_msg = greetinglist.pop(0)
-          bot.append([self.remove_qa_prefix(current_msg),self.remove_qa_prefix(next_msg)])
+          u = {'char': self.user, 'msg': self.remove_qa_prefix(current_msg)}
+          b = {'char': self.bot, 'msg': self.remove_qa_prefix(next_msg)}
+          bot.append([u,b])
         else:
-          bot.append([self.remove_qa_prefix(current_msg),None])
+          u = {'char': self.user, 'msg': self.remove_qa_prefix(current_msg)}
+          bot.append([u,None])
       else:
-        bot.append([None,self.remove_qa_prefix(current_msg)])
+        b = {'char': self.bot, 'msg': self.remove_qa_prefix(current_msg)}
+        bot.append([None, b])
     return bot
   
   def is_user(self,msg:str)->bool:

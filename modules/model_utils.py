@@ -7,7 +7,6 @@ from rwkv.model import RWKV
 from rwkv.utils import PIPELINE
 import gc
 from modules.sampler import Sampler
-import matplotlib.pyplot as plt
 
 class ModelUtils:
 
@@ -19,7 +18,7 @@ class ModelUtils:
   CHUNK_LEN = 100
   END_OF_TEXT = 0
   NEG_INF = -999999999
-  AVOID_REPEAT = '，：？！'
+  AVOID_REPEAT = '，。：？！,.:!?'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
   init_state = None
@@ -93,20 +92,27 @@ class ModelUtils:
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
+    if chat_param['tau'] > 0:
+      # max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
+      max_suprise = 2 * chat_param['tau']
+      self.sampler.set_param(chat_param['tau'], chat_param['lr'], chat_param['lr_decay'], max_suprise)
     occurrence = {}
-    self.sampler.set_param(chat_param['tau'], chat_param['lr'], 2 * chat_param['tau'])
-    # data1 = []
-    # data2 = []
-    # x = []
     for i in range(300):
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
-      result = self.sampler.choise(out, chat_param['min_p'], chat_param['min_temp'], 
-                                chat_param['max_temp'], chat_param['dynatemp_exponent'])
-      token = result[0]
+      now_str = self.pipeline.decode(model_tokens[begin:])
+      temp = chat_param['temp']
+      if chat_param['tau'] > 0:
+        k = 0
+        if now_str.endswith('（'):
+          k = 20
+          temp = 1000
+        token = self.sampler.choise(out, chat_param['min_p'], temp, k)
+      else:
+        token = self.pipeline.sample_logits(out, temp, chat_param['min_p'])
       if token not in occurrence:
         occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
@@ -115,23 +121,18 @@ class ModelUtils:
       if '\ufffd' not in xxx: # avoid utf-8 display issues
         out_last = begin + i + 1
       send_msg = self.pipeline.decode(model_tokens[begin:])
-      # data1.append(result[1])
-      # data2.append(result[2])
-      # x.append(i)
       if '\n\n' in send_msg:
         send_msg = send_msg.strip()
         break
-    # self.draw_pic(data1, data2, x)
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, tau, lr, min_p, min_temp, max_temp, dynatemp_exponent, presence_penalty):
+  def format_chat_param(self, tau, lr, lr_decay, min_p, temp, presence_penalty):
     chat_param = {
       'tau': tau,
       'lr': lr,
+      'lr_decay': lr_decay,
       'min_p': min_p,
-      'min_temp': min_temp,
-      'max_temp': max_temp,
-      'dynatemp_exponent': dynatemp_exponent,
+      'temp': temp,
       'presence_penalty': presence_penalty
     }
     return chat_param
@@ -139,10 +140,3 @@ class ModelUtils:
   def clear_cache(self):
     gc.collect()
     torch.cuda.empty_cache()
-
-  def draw_pic(self, data1, data2, x):
-    plt.figure()
-    plt.plot(x, data1, color='blue', linestyle='-')
-    plt.plot(x, data2, color='red', linestyle='--')
-    plt.legend(['observed surprise', 'dynamic temperature'], loc='upper left')
-    plt.savefig('myplot.png')
