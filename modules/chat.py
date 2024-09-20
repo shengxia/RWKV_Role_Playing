@@ -94,7 +94,7 @@ class Chat:
       msg_arr = msg.split('\n')
       for i, m in enumerate(msg_arr):
         if m[0] != '（':
-          msg_arr[i] = f'“{m}”'
+          msg_arr[i] = f'{m}'
       msg = '\n'.join(msg_arr)
     if replace_message:
       try:
@@ -146,8 +146,7 @@ class Chat:
       return self.__generate_cai_chat_html(), ''
     self.chunked_index = index
     messages = self.role_info.chatbot.pop()
-    msg = messages[0]['msg'].replace('“', '').replace('”', '')
-    return self.__generate_cai_chat_html(), msg, messages[1]['char']
+    return self.__generate_cai_chat_html(), messages[0]['msg'], messages[1]['char']
   
   def __flush_chat(self):
     chatbot = copy.deepcopy(self.role_info.chatbot)
@@ -353,11 +352,7 @@ class Chat:
   
   def __format_chat(self, text):
     pattern1 = re.compile(r'（(.*?)）')
-    pattern2 = re.compile(r'\"(.*?)\"')
-    pattern3 = re.compile(r'\*(.*?)\*')
-    pattern4 = re.compile(r'“(.*?)”')
+    pattern2 = re.compile(r'\*(.*?)\*')
     text1 = re.sub(pattern1, r'<em>\1</em>', text)
     text2 = re.sub(pattern2, r'<em>\1</em>', text1)
-    text3 = re.sub(pattern3, r'<em>\1</em>', text2)
-    text4 = re.sub(pattern4, r'\1', text3)
-    return text4
+    return text2

@@ -93,7 +93,8 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['tau'] > 0:
-      max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
+      # max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
+      max_suprise = 2 * chat_param['tau']
       self.sampler.set_param(chat_param['tau'], chat_param['lr'], chat_param['lr_decay'], max_suprise)
     occurrence = {}
     for i in range(300):
@@ -103,17 +104,11 @@ class ModelUtils:
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
       now_str = self.pipeline.decode(model_tokens[begin:])
-      if i < 50:
-        if out[261] > 0:
-          out[261] = 0 - out[261]
       temp = chat_param['temp']
       if chat_param['tau'] > 0:
         k = 0
-        if i == 0:
-          k = 2
-        elif now_str.endswith('“') or now_str.endswith('（') or now_str.count('"') / 2 != 0 or now_str.count('*') / 2 != 0:
-          k = 10
-        if k:
+        if now_str.endswith('（'):
+          k = 20
           temp = 1000
         token = self.sampler.choise(out, chat_param['min_p'], temp, k)
       else:
