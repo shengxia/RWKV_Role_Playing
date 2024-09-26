@@ -1,7 +1,6 @@
 import math
 import torch
 from torch import Tensor
-import numpy as np
 
 class Sampler(object):
 
@@ -14,32 +13,43 @@ class Sampler(object):
     self.rate = rate
     self.lr_decay = lr_decay
 
-  def choise(self, out: Tensor, min_p, temp, k):
+  def choise(self, out: Tensor, min_p, temp):
     sorted_logits, sorted_indices = torch.sort(out, descending=True)
     prob_original = torch.softmax(sorted_logits, dim=-1).tolist()
-    if k:
-      sorted_logits = sorted_logits[:k]
-    else:
-      # Mirostat v2
-      for i, candidate in enumerate(prob_original):
-        if candidate > 0 and -math.log2(candidate) > self.max_surprise:
-          if (i == 0):
-            sorted_logits = sorted_logits[:1]
-          else:
-            sorted_logits = sorted_logits[:i]
-          break
+    # Mirostat v2
+    for i, candidate in enumerate(prob_original):
+      if candidate > 0 and -math.log2(candidate) > self.max_surprise:
+        if (i == 0):
+          sorted_logits = sorted_logits[:1]
+        else:
+          sorted_logits = sorted_logits[:i]
+        break
     prob_topk = torch.softmax(sorted_logits, dim=-1)
     # min p
-    if min_p > 0 and min_p < 1 and k == 0:
+    if min_p > 0 and min_p < 1:
       prob_topk = prob_topk[prob_topk >= prob_topk[0].item() * min_p]
     # temperature
-    if temp != 1:
-      prob_topk = prob_topk ** (1 / temp)
+    if self.max_surprise > 3 * self.tau:
+      if temp != 1:
+        prob_topk = prob_topk ** (1 / temp)
+    else:
+      if temp > 1:
+        prob_topk = prob_topk * temp
+      elif temp < 1:
+        prob_topk = prob_topk / temp
     prev_i = torch.multinomial(prob_topk, num_samples=1, replacement=True)
     prev = sorted_indices[prev_i]
     observed_surprise = -math.log2(prob_original[prev_i])
     error_surprise = observed_surprise - self.tau
     self.max_surprise -= self.rate * error_surprise
-    if self.max_surprise > 10 * self.tau:
-      self.rate = self.rate / (1 + self.lr_decay)
+    self.rate = self.rate / (1 + self.lr_decay)
+    return int(prev[0])
+  
+  def k_sampler(self, out: Tensor, k, temp):
+    sorted_logits, sorted_indices = torch.sort(out, descending=True)
+    sorted_logits = sorted_logits[:k]
+    prob_topk = torch.softmax(sorted_logits, dim=-1)
+    prob_topk = prob_topk ** (1 / temp)
+    prev_i = torch.multinomial(prob_topk, num_samples=1, replacement=True)
+    prev = sorted_indices[prev_i]
     return int(prev[0])

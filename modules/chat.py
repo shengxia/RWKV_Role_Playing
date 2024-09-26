@@ -74,11 +74,15 @@ class Chat:
       return '', self.__generate_cai_chat_html()
     user_msg = self.role_info.chatbot[-1][0]['msg']
     if self.role_info.use_qa:
-      speak_to = self.role_info.bot
-    if user_msg:
-      new = f'{self.role_info.user}: {user_msg}\n\n{speak_to}:'
+      bot = f"{self.role_info.bot}: {speak_to}"
+      user = f"{self.role_info.user}: {self.role_info.user_chat}"
     else:
-      new = f'{speak_to}:'
+      bot = speak_to
+      user = self.role_info.user_chat
+    if user_msg:
+      new = f'{user}: {user_msg}\n\n{bot}:'
+    else:
+      new = f'{bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, min_p, temp, presence_penalty)
     reply_text = self.__gen_msg(speak_to, out, chat_param, model_tokens, model_state) 
@@ -87,8 +91,6 @@ class Chat:
   def on_message(self, message, speak_to, tau, lr, lr_decay, min_p, temp, presence_penalty, replace_message):
     if self.chunked_index:
       self.__flush_chat()
-    if self.role_info.use_qa:
-      speak_to = self.role_info.bot
     msg = message.strip().replace('\r\n','\n') if message else ''
     if msg:
       msg_arr = msg.split('\n')
@@ -96,12 +98,18 @@ class Chat:
         if m[0] != '（':
           msg_arr[i] = f'{m}'
       msg = '\n'.join(msg_arr)
+    if self.role_info.use_qa:
+      bot = f"{self.role_info.bot}: {speak_to}"
+      user = f"{self.role_info.user}: {self.role_info.user_chat}"
+    else:
+      bot = speak_to
+      user = self.role_info.user_chat
     if replace_message:
       try:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
       except:
         return '', self.__generate_cai_chat_html(), speak_to
-      new = f"{self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\n{self.role_info.bot}: {msg}\n\n"
+      new = f"{user}: {self.role_info.chatbot[-1][0]}\n\n{bot}: {msg}\n\n"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot[-1][1] = {'char': speak_to, 'msg': msg}
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -111,11 +119,11 @@ class Chat:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
       if msg:
-        new = f"{self.role_info.user}: {msg}\n\n{speak_to}:"
+        new = f"{user}: {msg}\n\n{bot}:"
       else:
-        new = f"{speak_to}:"
+        new = f"{bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-      user_msg = {'char': self.role_info.user, 'msg': msg}
+      user_msg = {'char': self.role_info.user_chat, 'msg': msg}
       self.role_info.chatbot += [[user_msg, None]]
       chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, min_p, temp, presence_penalty)
       reply_text = self.__gen_msg(speak_to, out, chat_param, model_tokens, model_state)
@@ -134,7 +142,10 @@ class Chat:
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
-    new = f"{self.role_info.user}:"
+    if self.role_info.use_qa:
+      new = f"{self.role_info.user}: {self.role_info.user_chat}:"
+    else:
+      new = f"{self.role_info.user_chat}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
     chat_param = self.model_utils.format_chat_param(tau, lr, lr_decay, min_p, temp, presence_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
@@ -248,12 +259,8 @@ class Chat:
     turn = 0
     for row in chatbot:
       if row[1]:
-        if self.role_info.use_qa:
-          img_bot = f'<img src="file/chars/{self.role_info.file_name}.png">' if Path(f'chars/{self.role_info.file_name}.png').exists() else ''
-          char_name = self.role_info.bot_chat
-        else:
-          img_bot = f'<img src="file/chars/{row[1]["char"]}.png">' if Path(f'chars/{row[1]["char"]}.png').exists() else ''
-          char_name = row[1]['char']
+        img_bot = f'<img src="file/chars/{row[1]["char"]}.png">' if Path(f'chars/{row[1]["char"]}.png').exists() else ''
+        char_name = row[1]['char']
         msg = self.__format_chat(row[1]['msg'].replace('\n', '<br>')).replace('<pre><br>', '<pre>')
         output += f"""
           <div class="message message_c">
@@ -292,9 +299,17 @@ class Chat:
     chat_str = ''
     for row in chatbot:
       if row[0] and row[0]['msg']:
-        chat_str += f"{row[0]['char']}: {row[0]['msg']}\n\n"
+        if self.role_info.use_qa:
+          user = f"{self.role_info.user}: {row[0]['char']}"
+        else:
+          user = row[0]['char']
+        chat_str += f"{user}: {row[0]['msg']}\n\n"
       if row[1]:
-        chat_str += f"{row[1]['char']}: {row[1]['msg']}\n\n"
+        if self.role_info.use_qa:
+          bot = f"{self.role_info.bot}: {row[1]['char']}"
+        else:
+          bot = row[1]['char']
+        chat_str += f"{bot}: {row[1]['msg']}\n\n"
     return chat_str
   
   def __get_init_prompt(self):
