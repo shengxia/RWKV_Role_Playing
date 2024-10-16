@@ -93,9 +93,8 @@ class ModelUtils:
     begin = len(model_tokens)
     out_last = begin
     if chat_param['tau'] > 0:
-      # max_suprise = self.sampler.max_surprise * 0.5 if self.sampler.max_surprise > 4 * chat_param['tau'] else 2 * chat_param['tau']
       max_suprise = 2 * chat_param['tau']
-      self.sampler.set_param(chat_param['tau'], chat_param['lr'], chat_param['lr_decay'], max_suprise)
+      self.sampler.set_param(chat_param['tau'], chat_param['lr'], max_suprise)
     occurrence = {}
     for i in range(300):
       for n in occurrence:
@@ -106,7 +105,7 @@ class ModelUtils:
       now_str = self.pipeline.decode(model_tokens[begin:])
       temp = chat_param['temp']
       if now_str.endswith('（'):
-        token = self.sampler.k_sampler(out, 20, 1000)
+        token = self.sampler.k_sampler(out, 10, 1000)
       else:
         if chat_param['tau'] > 0:
           token = self.sampler.choise(out, chat_param['min_p'], temp)
@@ -125,11 +124,10 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, tau, lr, lr_decay, min_p, temp, presence_penalty):
+  def format_chat_param(self, tau, lr, min_p, temp, presence_penalty):
     chat_param = {
       'tau': tau,
       'lr': lr,
-      'lr_decay': lr_decay,
       'min_p': min_p,
       'temp': temp,
       'presence_penalty': presence_penalty
