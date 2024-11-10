@@ -104,7 +104,7 @@ class ModelUtils:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
       now_str = self.pipeline.decode(model_tokens[begin:])
       temp = chat_param['temp']
-      if now_str.endswith('（'):
+      if now_str.endswith('（') or now_str.endswith('“'):
         token = self.sampler.k_sampler(out, 10, 1000)
       else:
         if chat_param['tau'] > 0:
