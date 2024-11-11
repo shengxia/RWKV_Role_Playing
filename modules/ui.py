@@ -238,9 +238,9 @@ class UI:
   def __clear_last(self):
     chatbot, role_list, message, speak_to = self.chat_model.clear_last()
     return_arr = (
-      message,
       chatbot,
       gr.Dropdown(choices=role_list),
+      message,
       speak_to
     )
     return return_arr
