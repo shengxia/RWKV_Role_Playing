@@ -305,7 +305,8 @@ class Chat:
         """
       turn += 1
     output += "</div>"
-    return output, role_list.sort()
+    role_list.sort()
+    return output, role_list
   
   def __get_chatbot_str(self, chatbot):
     chat_str = ''
