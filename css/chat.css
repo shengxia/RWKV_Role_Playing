@@ -59,17 +59,35 @@
   border-color: #e5e7eb;
   border-radius: 0 22px 22px 22px;
   background-color: #f9fafb;
-  color: #FFB7C5 !important;
+  color: #FFCCCC !important;
+}
+
+.message-body-c em {
+  color: #FF6666 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
+}
+
+.message-body-c i {
+  color: #999 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
 }
 
 .dark .message-body-c {
   border-color: #374151;
   border-radius: 0 22px 22px 22px;
   background-color: #111827;
-  color: #FFB7C5 !important;
+  color: #FFCCCC !important;
 }
 
 .dark .message-body-c em {
+  color: #FF6666 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
+}
+
+.dark .message-body-c i {
   color: #999 !important;
   margin-bottom: 0px !important;
   font-style: normal;
@@ -82,6 +100,18 @@
   color: orange !important;
 }
 
+.message-body-m em {
+  color: #CC9933 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
+}
+
+.message-body-m i {
+  color: #999 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
+}
+
 .dark .message-body-m {
   border-color: #4b5563;
   border-radius: 22px 0 22px 22px;
@@ -90,6 +120,12 @@
 }
 
 .dark .message-body-m em {
+  color: #CC9933 !important;
+  margin-bottom: 0px !important;
+  font-style: normal;
+}
+
+.dark .message-body-m i {
   color: #999 !important;
   margin-bottom: 0px !important;
   font-style: normal;

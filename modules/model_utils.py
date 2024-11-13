@@ -102,15 +102,15 @@ class ModelUtils:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
-      now_str = self.pipeline.decode(model_tokens[begin:])
+      # now_str = self.pipeline.decode(model_tokens[begin:])
       temp = chat_param['temp']
-      if now_str.endswith('（') or now_str.endswith('“'):
-        token = self.sampler.k_sampler(out, 10, 1000)
+      # if now_str.endswith('（') or now_str.endswith('“'):
+      #   token = self.sampler.k_sampler(out, 10, 1000)
+      # else:
+      if chat_param['tau'] > 0:
+        token = self.sampler.choise(out, chat_param['min_p'], temp)
       else:
-        if chat_param['tau'] > 0:
-          token = self.sampler.choise(out, chat_param['min_p'], temp)
-        else:
-          token = self.pipeline.sample_logits(out, temp, chat_param['min_p'])
+        token = self.pipeline.sample_logits(out, temp, chat_param['min_p'])
       if token not in occurrence:
         occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])

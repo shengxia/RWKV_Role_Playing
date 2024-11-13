@@ -383,8 +383,12 @@ class Chat:
     self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
   
   def __format_chat(self, text):
-    pattern1 = re.compile(r'（(.*?)）')
-    pattern2 = re.compile(r'\*(.*?)\*')
+    pattern1 = re.compile(r'“(.*?)”')
+    pattern2 = re.compile(r'"(.*?)"')
+    pattern3 = re.compile(r'\*(.*?)\*')
+    pattern4 = re.compile(r'（(.*?)）')
     text1 = re.sub(pattern1, r'<em>\1</em>', text)
     text2 = re.sub(pattern2, r'<em>\1</em>', text1)
-    return text2
+    text3 = re.sub(pattern3, r'<i>\1</i>', text2)
+    text4 = re.sub(pattern4, r'<i>\1</i>', text3)
+    return text4
