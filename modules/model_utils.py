@@ -17,7 +17,7 @@ class ModelUtils:
   strategy = None
   CHUNK_LEN = 100
   END_OF_TEXT = 0
-  NEG_INF = -999999999
+  NEG_INF = -9999
   AVOID_REPEAT = '，。：？！,.:!?'
   AVOID_REPEAT_TOKENS = []
   all_state = {}
@@ -33,15 +33,15 @@ class ModelUtils:
   def load_model(self):
     self.model = RWKV(model=self.model_path, strategy=self.strategy)
     self.pipeline = PIPELINE(self.model, "rwkv_vocab_v20230424")
-    self.n_embd = self.model.w['emb.weight'].shape[1]
-    n_layer = 0
-    keys = list(self.model.w.keys())
-    for x in keys:
-      layer_id = int(x.split('.')[1]) if ('blocks.' in x) else 0
-      n_layer = max(n_layer, layer_id+1)
-    self.n_layer = n_layer
-    if self.state_path:
-      self.load_state()
+    # self.n_embd = self.model.w['emb.weight'].shape[1]
+    # n_layer = 0
+    # keys = list(self.model.w.keys())
+    # for x in keys:
+    #   layer_id = int(x.split('.')[1]) if ('blocks.' in x) else 0
+    #   n_layer = max(n_layer, layer_id+1)
+    # self.n_layer = n_layer
+    # if self.state_path:
+    #   self.load_state()
     for i in self.AVOID_REPEAT:
       dd = self.pipeline.encode(i)
       assert len(dd) == 1
@@ -92,25 +92,14 @@ class ModelUtils:
     self.clear_cache()
     begin = len(model_tokens)
     out_last = begin
-    if chat_param['tau'] > 0:
-      max_suprise = 2 * chat_param['tau']
-      self.sampler.set_param(chat_param['tau'], chat_param['lr'], max_suprise)
     occurrence = {}
-    for i in range(300):
+    for i in range(chat_param['max_len']):
       for n in occurrence:
         if out[n] > 0:
           out[n] = out[n] / (1 + chat_param['presence_penalty'])
         else:
           out[n] = out[n] * (1 + chat_param['presence_penalty'])
-      # now_str = self.pipeline.decode(model_tokens[begin:])
-      temp = chat_param['temp']
-      # if now_str.endswith('（') or now_str.endswith('“'):
-      #   token = self.sampler.k_sampler(out, 10, 1000)
-      # else:
-      if chat_param['tau'] > 0:
-        token = self.sampler.choise(out, chat_param['min_p'], temp)
-      else:
-        token = self.pipeline.sample_logits(out, temp, chat_param['min_p'])
+      token = self.sampler.choise(out, chat_param['min_p'], chat_param['temp'])
       if token not in occurrence:
         occurrence[token] = 1
       out, model_tokens, model_state = self.run_rnn(model_tokens, model_state, [token])
@@ -124,10 +113,9 @@ class ModelUtils:
         break
     return send_msg, out, model_tokens, model_state
   
-  def format_chat_param(self, tau, lr, min_p, temp, presence_penalty):
+  def format_chat_param(self, max_len, min_p, temp, presence_penalty):
     chat_param = {
-      'tau': tau,
-      'lr': lr,
+      'max_len': max_len,
       'min_p': min_p,
       'temp': temp,
       'presence_penalty': presence_penalty

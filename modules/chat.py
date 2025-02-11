@@ -13,6 +13,9 @@ class Chat:
   chunked_index = None
   chat_length = 4000
   autosave = False
+  ins_prompt = "Instruction: Develop the plot slowly, always stay in character. Describe all actions in full, elaborate, explicit, graphic, and vivid detail. Mention all relevant sensory perceptions. Keep the story immersive and engaging."
+  ins_prompt2 = "Please respond based on the information and instructions provided below."
+  world_book = None
 
   def __init__(self, model_utils:ModelUtils, lang, chat_length, autosave):
     self.model_utils = model_utils
@@ -22,12 +25,15 @@ class Chat:
     with open('./css/chat.css', 'r') as f:
       self.chat_css = f.read()
   
-  def load_init_prompt(self, file_name, user, bot, greeting, bot_persona, example_message, use_qa):
+  def load_init_prompt(self, file_name, user, bot, greeting, bot_persona, example_message):
     model_tokens = []
     model_state = None
     self.chunked_index = None
     self.role_info = RoleInfo(file_name, [], user, bot, greeting, bot_persona, example_message, 
-                              use_qa, str(uuid.uuid1()).replace('-', ''))
+                              str(uuid.uuid1()).replace('-', ''))
+    world_book_path = f'chars/{bot}.conf'
+    if os.path.exists(world_book_path):
+      self.world_book = json.load(open(world_book_path, 'r', encoding='utf-8'))
     try:
       self.model_utils.remove_stat('chat_pre')
     except:
@@ -47,7 +53,7 @@ class Chat:
     if data['model_tokens_pre']:
       self.model_utils.save_all_stat('chat_pre', data['out_pre'], data['model_tokens_pre'], data['model_state_pre'])
     self.role_info.chatbot = data['chatbot']
-    return self.role_info.chatbot, self.role_info.bot_chat
+    return self.role_info.chatbot, self.role_info.bot
   
   def reset_bot(self):
     out, model_tokens, model_state = self.__get_init_state()
@@ -66,9 +72,9 @@ class Chat:
       os.remove(save_file)
     self.chunked_index = None
     chat_html, char_list = self.__generate_cai_chat_html()
-    return None, chat_html, char_list, self.role_info.bot_chat
+    return None, chat_html, char_list, self.role_info.bot
 
-  def regen_msg(self, speak_to, tau, lr, min_p, temp, presence_penalty):
+  def regen_msg(self, speak_to, max_len, min_p, temp, presence_penalty):
     if self.chunked_index:
       self.__flush_chat()
     try:
@@ -77,44 +83,31 @@ class Chat:
       chat_html, char_list = self.__generate_cai_chat_html()
       return '', chat_html, char_list, speak_to
     user_msg = self.role_info.chatbot[-1][0]['msg']
-    if self.role_info.use_qa:
-      bot = f"{self.role_info.bot}: {speak_to}"
-      user = f"{self.role_info.user}: {self.role_info.user_chat}"
-    else:
-      bot = speak_to
-      user = self.role_info.user_chat
+    bot = speak_to
+    world_book_info = self.__check_world_book(user_msg)
+    if world_book_info:
+      world_book_info += '\n'
     if user_msg:
-      new = f'{user}: {user_msg}\n\n{bot}:'
+      new = f"{self.ins_prompt}\n\nInput: {world_book_info}{self.role_info.user}: {user_msg}\n\nResponse: {bot}:"
     else:
       new = f'{bot}:'
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(tau, lr, min_p, temp, presence_penalty)
+    chat_param = self.model_utils.format_chat_param(max_len, min_p, temp, presence_penalty)
     chat_html, char_list = self.__gen_msg(speak_to, out, chat_param, model_tokens, model_state) 
     return '', chat_html, char_list, speak_to
   
-  def on_message(self, message, speak_to, tau, lr, min_p, temp, presence_penalty, replace_message):
+  def on_message(self, message, speak_to, max_len, min_p, temp, presence_penalty, replace_message):
     if self.chunked_index:
       self.__flush_chat()
     msg = message.strip().replace('\r\n','\n') if message else ''
-    # if msg:
-    #   msg_arr = msg.split('\n')
-    #   for i, m in enumerate(msg_arr):
-    #     if m[0] != '（':
-    #       msg_arr[i] = f'{m}'
-    #   msg = '\n'.join(msg_arr)
-    if self.role_info.use_qa:
-      bot = f"{self.role_info.bot}: {speak_to}"
-      user = f"{self.role_info.user}: {self.role_info.user_chat}"
-    else:
-      bot = speak_to
-      user = self.role_info.user_chat
+    bot = speak_to
     if replace_message:
       try:
         out, model_tokens, model_state = self.model_utils.load_all_stat('chat_pre')
       except:
         chat_html, char_list = self.__generate_cai_chat_html()
         return '', chat_html, char_list, speak_to
-      new = f"{user}: {self.role_info.chatbot[-1][0]}\n\n{bot}: {msg}\n\n"
+      new = f"{self.ins_prompt}\n\nInput: {self.role_info.user}: {self.role_info.chatbot[-1][0]}\n\nResponse: {bot}: {msg}\n\n"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
       self.role_info.chatbot[-1][1] = {'char': speak_to, 'msg': msg}
       self.model_utils.save_all_stat('chat', out, model_tokens, model_state)
@@ -124,14 +117,17 @@ class Chat:
     else:
       out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
       self.model_utils.save_all_stat('chat_pre', out, model_tokens, model_state)
+      world_book_info = self.__check_world_book(msg)
+      if world_book_info:
+        world_book_info += '\n'
       if msg:
-        new = f"{user}: {msg}\n\n{bot}:"
+        new = f"{self.ins_prompt}\n\nInput: {world_book_info}{self.role_info.user}: {msg}\n\nResponse: {bot}:"
       else:
         new = f"{bot}:"
       out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-      user_msg = {'char': self.role_info.user_chat, 'msg': msg}
+      user_msg = {'char': self.role_info.user, 'msg': msg}
       self.role_info.chatbot += [[user_msg, None]]
-      chat_param = self.model_utils.format_chat_param(tau, lr, min_p, temp, presence_penalty)
+      chat_param = self.model_utils.format_chat_param(max_len, min_p, temp, presence_penalty)
       chat_html, char_list = self.__gen_msg(speak_to, out, chat_param, model_tokens, model_state)
       self.ban_tokens = []
       return '', chat_html, char_list, speak_to
@@ -145,16 +141,13 @@ class Chat:
     chat_html, char_list = self.__generate_cai_chat_html()
     return chat_html, char_list
     
-  def get_prompt(self, tau, lr, min_p, temp, presence_penalty):
+  def get_prompt(self, max_len, min_p, temp, presence_penalty):
     if self.chunked_index:
       self.__flush_chat()
     out, model_tokens, model_state = self.model_utils.load_all_stat('chat')
-    if self.role_info.use_qa:
-      new = f"{self.role_info.user}: {self.role_info.user_chat}:"
-    else:
-      new = f"{self.role_info.user_chat}:"
+    new = f"{self.role_info.user}:"
     out, model_tokens, model_state = self.model_utils.run_rnn(model_tokens, model_state, self.model_utils.pipeline.encode(new))
-    chat_param = self.model_utils.format_chat_param(tau, lr, min_p, temp, presence_penalty)
+    chat_param = self.model_utils.format_chat_param(max_len, min_p, temp, presence_penalty)
     new_prompt = self.model_utils.get_reply(model_tokens, model_state, out, chat_param)
     return new_prompt[0]
   
@@ -256,8 +249,8 @@ class Chat:
       data = self.model_utils.load_all_stat('chat')
     except:
       return True
-    if data[2][0].numel() != self.model_utils.n_embd or len(data[2]) / 3 != self.model_utils.n_layer:
-      return False
+    # if data[2][0].numel() != self.model_utils.n_embd or len(data[2]) / 3 != self.model_utils.n_layer:
+    #   return False
     return True
   
   def __generate_cai_chat_html(self):
@@ -295,7 +288,7 @@ class Chat:
           <div class="message message_m">
             <div class="text_m">
               <div class="username username-m">
-                {self.role_info.user_chat}
+                {self.role_info.user}
               </div>
               <div class="message-body message-body-m">
                 {msg}
@@ -312,39 +305,44 @@ class Chat:
     chat_str = ''
     for row in chatbot:
       if row[0] and row[0]['msg']:
-        if self.role_info.use_qa:
-          user = f"{self.role_info.user}: {row[0]['char']}"
-        else:
-          user = row[0]['char']
-        chat_str += f"{user}: {row[0]['msg']}\n\n"
+        user = row[0]['char']
+        chat_str += f"{self.ins_prompt}\n\nInput: {user}: {row[0]['msg']}\n\n"
       if row[1] and row[1]['msg']:
-        if self.role_info.use_qa:
-          bot = f"{self.role_info.bot}: {row[1]['char']}"
+        bot = row[1]['char']
+        if row[0]:
+          chat_str += f"Response: {bot}: {row[1]['msg']}\n\n"
         else:
-          bot = row[1]['char']
-        chat_str += f"{bot}: {row[1]['msg']}\n\n"
+          chat_str += f"{bot}: {row[1]['msg']}\n\n"
     return chat_str
   
   def __get_init_prompt(self):
-    bot_name = self.role_info.get_pure_char_name()
-    em = self.role_info.example_message.replace(
-      "{{char}}", bot_name).replace(
-      "{{user}}", self.role_info.user_chat)
+    em = self.__format_example_message()
     bp = self.role_info.bot_persona.replace(
-      "{{char}}", bot_name).replace(
-      "{{user}}", self.role_info.user_chat)
-    greeting = self.__get_chatbot_str(self.role_info.greeting_chatbot)
-    init_prompt = ''
-    if em:
-      init_prompt += f'{em}\n\n'
-    init_prompt += f"{bp}"
+      "{{char}}", self.role_info.bot).replace(
+      "{{user}}", self.role_info.user)
+    init_prompt = f"{self.ins_prompt}{em}{self.ins_prompt2}\n\nInput: {bp}\n\n"
     init_prompt = init_prompt.strip().split('\n')
     for c in range(len(init_prompt)):
       init_prompt[c] = init_prompt[c].strip().strip('\u3000').strip('\r')
     init_prompt = '\n'.join(init_prompt).strip() + '\n\n'
-    if greeting:
-      init_prompt += f"{greeting}"
+    if not self.role_info.greeting:
+      init_prompt += 'Response: Understood.\n\n'
+    init_prompt += self.role_info.greeting
     return f'{init_prompt}'
+  
+  def __format_example_message(self):
+    new_em = ''
+    em = self.role_info.example_message.replace(
+          "{{char}}", self.role_info.bot).replace(
+          "{{user}}", self.role_info.user).split('\n\n')
+    for e in em:
+      if e.startswith("{{user}}:") or e.startswith(f"{self.role_info.user}:"):
+        new_em += f"Input: {e}\n\n"
+      if e.startswith("{{char}}:") or e.startswith(f"{self.role_info.bot}:"):
+        new_em += f"Response: {e}\n\n"
+    if new_em:
+      new_em = '\n\n' + new_em + 'Instruction: '
+    return new_em
 
   def get_test_data(self):
     data_now = self.model_utils.load_all_stat('chat') 
@@ -392,3 +390,11 @@ class Chat:
     text3 = re.sub(pattern3, r'<i>\1</i>', text2)
     text4 = re.sub(pattern4, r'<i>\1</i>', text3)
     return text4
+
+  def __check_world_book(self, prompt):
+    if not self.world_book:
+      return ''
+    for k, v in self.world_book.items():
+      if k in prompt:
+        return v.replace("{{user}}", self.role_info.user).replace("{{char}}", self.role_info.bot)
+    return ''
