@@ -56,10 +56,11 @@ class UI:
     return save_list
   
   # 保存角色扮演模式的配置
-  def __save_config(self, max_len=300, min_p=0.05, temp=1, presence_penalty=0.2):
+  def __save_config(self, tau=3, lr=0.1, min_p=0.05, temp=1, presence_penalty=0.2):
     with open(self.config_path, 'w', encoding='utf8') as f:
       config = {
-        'max_len': max_len,
+        'tau': tau,
+        'lr': lr,
         'min_p': min_p, 
         'temp': temp, 
         'presence': presence_penalty
@@ -87,7 +88,7 @@ class UI:
       if os.path.exists(save_file):
         os.remove(save_file)
     chatbot, role_list = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
-                                               char['example_message'])
+                                               char['example_message'], char['use_qa'])
     char_list = self.__get_json_files(self.char_path)
     return_arr = (
       gr.Dropdown(choices=char_list),
@@ -112,9 +113,12 @@ class UI:
       char = json.loads(f.read())
     for key in ['user', 'bot', 'greeting', 'bot_persona', 'example_message', 'use_qa']:
       if key not in char.keys():
+        if key == 'use_qa':
+          char[key] = False
+        else:
           char[key] = ''
     chatbot, role_list = self.chat_model.load_init_prompt(file_name, char['user'], char['bot'], char['greeting'], char['bot_persona'], 
-                                               char['example_message'])
+                                               char['example_message'], char['use_qa'])
     return_arr = (
       file_name,
       char['user'], 
@@ -122,6 +126,7 @@ class UI:
       char['greeting'], 
       char['bot_persona'],
       char['example_message'],
+      char['use_qa'],
       chatbot,
       gr.Dropdown(choices=role_list),
       char['bot'], 
@@ -171,8 +176,8 @@ class UI:
     )
     return return_arr
 
-  def __send_message(self, message, speak_to, max_len, min_p, temp, presence_penalty, replace_message):
-    text, chatbot, role_list, speak_to = self.chat_model.on_message(message, speak_to, max_len, min_p, temp, 
+  def __send_message(self, message, speak_to, tau, lr, min_p, temp, presence_penalty, replace_message):
+    text, chatbot, role_list, speak_to = self.chat_model.on_message(message, speak_to, tau, lr, min_p, temp, 
                                                presence_penalty, replace_message)
     show_label = False
     interactive = True
@@ -220,8 +225,8 @@ class UI:
     )
     return return_arr
   
-  def __regen_msg(self, speak_to, max_len, min_p, temp, presence_penalty):
-    message, chatbot, role_list, speak_to = self.chat_model.regen_msg(speak_to, max_len, min_p, temp, presence_penalty)
+  def __regen_msg(self, speak_to, tau, lr, min_p, temp, presence_penalty):
+    message, chatbot, role_list, speak_to = self.chat_model.regen_msg(speak_to, tau, lr, min_p, temp, presence_penalty)
     return_arr = (
       message,
       chatbot,
@@ -248,12 +253,13 @@ class UI:
     with open(self.config_path, 'r', encoding='utf-8') as f:
       configs_role = json.loads(f.read())
     char_list = self.__get_json_files(self.char_path)
-    config_items = ['max_len', 'min_p', 'temp', 'presence']
+    config_items = ['tau', 'lr', 'min_p', 'temp', 'presence']
     for item in config_items:
       if item not in configs_role:
         configs_role[item] = 0
     return_arr = (
-      configs_role['max_len'], 
+      configs_role['tau'], 
+      configs_role['lr'], 
       configs_role['min_p'], 
       configs_role['temp'], 
       configs_role['presence'],
@@ -319,7 +325,8 @@ class UI:
                 with gr.Column(min_width=100):
                   save_btn = gr.Button(self.language_conf['SAVE_STATE'])
             with gr.Tab(self.language_conf['TAB_CONFIG']):  
-              max_len = gr.Slider(minimum=0, maximum=4096, step=1, label='最大长度')
+              tau = gr.Slider(minimum=0, maximum=20, step=0.1, label='目标熵')
+              lr = gr.Slider(minimum=0, maximum=1, step=0.001, label='学习率')
               min_p = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='Min P')
               temp = gr.Slider(minimum=0.1, maximum=3.0, step=0.01, label='温度值')
               presence_penalty = gr.Slider(minimum=0, maximum=1.0, step=0.01, label='重复惩罚')
@@ -333,6 +340,7 @@ class UI:
             file_name = gr.Textbox(placeholder=self.language_conf['FILE_NAME_PH'], label=self.language_conf['FILE_NAME_LB'])
             user = gr.Textbox(placeholder=self.language_conf['USER_PH'], label=self.language_conf['USER_LB'])
             bot = gr.Textbox(placeholder=self.language_conf['BOT_PH'], label=self.language_conf['BOT_LB'])
+            use_qa = gr.Checkbox(label=self.language_conf['QA_REPLACE'])
           with gr.Column():
             greeting = gr.TextArea(placeholder=self.language_conf['GREETING_PH'], label=self.language_conf['GREETING_LB'], lines=2)
             bot_persona = gr.TextArea(placeholder=self.language_conf['PERSONA_PH'], label=self.language_conf['PERSONA_LB'], lines=7)
@@ -340,9 +348,9 @@ class UI:
           example_message = gr.TextArea(placeholder=self.language_conf['EXAMPLE_DIA'], label=self.language_conf['EXAMPLE_DIA_LB'], lines=10)
         save_char_btn = gr.Button(self.language_conf['SAVE_CHAR'])
       
-      input_list = [message, speak_to, max_len, min_p, temp, presence_penalty]
+      input_list = [message, speak_to, tau, lr, min_p, temp, presence_penalty]
       output_list = [message, chatbot, role_dropdown, speak_to]
-      char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, chatbot]
+      char_input_list = [file_name, user, bot, greeting, bot_persona, example_message, use_qa, chatbot]
       interactive_list = [message, submit, regen, delete, clear_last_btn, get_prompt_btn]
 
       load_char_btn.click(self.__load_char, inputs=[char_dropdown], outputs=char_input_list + [role_dropdown, speak_to, save_dropdown] + interactive_list).then(self.__check_model_state)
@@ -370,7 +378,8 @@ class UI:
       test_btn.click(self.chat_model.get_test_data, outputs=[test_now, test_pre])
 
       reload_list = [
-        max_len,
+        tau,
+        lr,
         min_p,
         temp,
         presence_penalty, 
